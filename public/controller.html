@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Trivia Duel - Mobile Controller</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Mobile-first full height controller adjustments */
+    html, body {
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-between p-4 bg-[#0c071e]">
+
+  <!-- TOP CONTROLLER BAR -->
+  <header class="party-card px-4 py-2.5 flex items-center justify-between mb-3 shrink-0">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">⚡</span>
+      <span class="font-display font-extrabold text-sm text-yellow-300">TRIVIA DUEL</span>
+    </div>
+
+    <!-- Active Player Pill -->
+    <div id="playerPill" class="hidden flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 text-xs font-bold">
+      <span id="playerAvatarPill">😎</span>
+      <span id="playerNamePill" class="truncate max-w-[100px]">Player</span>
+      <span id="playerScorePill" class="text-yellow-300 ml-1">0 pts</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <span class="text-[10px] font-mono text-gray-400 uppercase tracking-widest" id="ctrlRoomLabel">ROOM: ----</span>
+      <button id="ctrlSoundBtn" class="text-xs p-1">🔊</button>
+    </div>
+  </header>
+
+  <!-- CONTROLLER BODY STAGES -->
+  <main class="flex-1 flex flex-col justify-center relative overflow-y-auto">
+    
+    <!-- ================= STAGE 1: JOIN / AVATAR PICKER ================= -->
+    <div id="ctrlStageJoin" class="party-card p-6 flex flex-col justify-between max-w-md mx-auto w-full">
+      <div>
+        <div class="text-center mb-4">
+          <span class="text-4xl animate-bounce inline-block mb-1">🎮</span>
+          <h2 class="text-2xl font-black text-white">Join Party Game</h2>
+          <p class="text-xs text-gray-300">Enter room code and pick your party avatar</p>
+        </div>
+
+        <div class="space-y-3 mb-4">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">4-Digit Room Code</label>
+            <input id="inputRoomCode" type="text" maxlength="4" placeholder="e.g. DUEL"
+              class="w-full text-center font-display font-black text-2xl uppercase tracking-widest px-4 py-2.5 rounded-xl bg-black/50 border border-white/20 text-yellow-300 focus:outline-none focus:border-yellow-400">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Your Nickname</label>
+            <input id="inputPlayerName" type="text" maxlength="15" placeholder="e.g. DiscoDave"
+              class="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/20 text-white font-bold text-center focus:outline-none focus:border-cyan-400">
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 text-center">Pick Avatar</label>
+            <div id="avatarPickerGrid" class="grid grid-cols-6 gap-2 text-2xl bg-black/30 p-2.5 rounded-xl border border-white/10">
+              <button class="avatar-opt p-1 rounded-lg border-2 border-yellow-400 bg-white/10" data-avatar="😎">😎</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🦄">🦄</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🥑">🥑</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🤖">🤖</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🍕">🍕</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🚀">🚀</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🦊">🦊</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="👑">👑</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="👾">👾</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🌮">🌮</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🔥">🔥</button>
+              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="👻">👻</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="joinErrorMsg" class="hidden text-xs text-red-400 text-center font-bold mb-3"></div>
+      </div>
+
+      <button id="btnJoinGame" class="w-full btn-arcade btn-green text-base py-3">
+        JOIN ROOM 🚀
+      </button>
+    </div>
+
+    <!-- ================= STAGE 2: LOBBY / WAITING SCREEN ================= -->
+    <div id="ctrlStageLobby" class="party-card p-6 hidden flex-col items-center justify-between text-center max-w-md mx-auto w-full h-full">
+      <div>
+        <div class="w-20 h-20 rounded-3xl bg-white/10 border-2 border-yellow-400 flex items-center justify-center text-4xl mx-auto mb-3 shadow-xl">
+          <span id="lobbyPlayerAvatar">😎</span>
+        </div>
+        <h3 id="lobbyPlayerName" class="text-2xl font-black text-white mb-1">Contestant</h3>
+        <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase inline-block mb-4">
+          ✓ Connected to Room <span id="lobbyRoomBadge">----</span>
+        </span>
+
+        <p class="text-sm text-gray-300 mb-6">
+          Look up at the TV / Host screen! The game will begin shortly.
+        </p>
+      </div>
+
+      <!-- Live Emoji Reaction Bar (Interacts with TV screen) -->
+      <div class="w-full pt-4 border-t border-white/10">
+        <div class="text-[11px] font-bold uppercase text-gray-400 mb-2">Send Reactions to TV:</div>
+        <div class="flex items-center justify-center gap-2">
+          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="🎉">🎉</button>
+          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="🔥">🔥</button>
+          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="💀">💀</button>
+          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="😱">😱</button>
+          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="🚀">🚀</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 3: SPEED TRIVIA BUTTONS ================= -->
+    <div id="ctrlStageSpeed" class="hidden flex-col justify-between w-full h-full">
+      
+      <!-- Top question prompt reminder & answered lock banner -->
+      <div id="speedLockBanner" class="party-card px-4 py-2.5 mb-3 text-center transition">
+        <span class="text-xs font-bold text-gray-300 uppercase tracking-wider" id="speedStatusText">
+          TAP AN ANSWER QUICKLY!
+        </span>
+      </div>
+
+      <!-- 4 Huge Responsive Shape Buttons -->
+      <div class="grid grid-cols-2 gap-3 flex-1">
+        <!-- 0: Red Triangle -->
+        <button class="shape-pad pad-red text-center" data-choice="0">
+          <div class="text-4xl md:text-5xl mb-2 font-black">▲</div>
+          <span class="text-sm md:text-base font-bold">RED</span>
+        </button>
+
+        <!-- 1: Blue Diamond -->
+        <button class="shape-pad pad-blue text-center" data-choice="1">
+          <div class="text-4xl md:text-5xl mb-2 font-black">◆</div>
+          <span class="text-sm md:text-base font-bold">BLUE</span>
+        </button>
+
+        <!-- 2: Yellow Circle -->
+        <button class="shape-pad pad-yellow text-center" data-choice="2">
+          <div class="text-4xl md:text-5xl mb-2 font-black text-amber-950">●</div>
+          <span class="text-sm md:text-base font-bold text-amber-950">YELLOW</span>
+        </button>
+
+        <!-- 3: Green Square -->
+        <button class="shape-pad pad-green text-center" data-choice="3">
+          <div class="text-4xl md:text-5xl mb-2 font-black">■</div>
+          <span class="text-sm md:text-base font-bold">GREEN</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 4: THE SPECTRUM CONTROLLER ================= -->
+    <div id="ctrlStageSpectrum" class="party-card p-5 hidden flex-col justify-between max-w-md mx-auto w-full h-full">
+      
+      <!-- Branch A: Psychic View (typing clue) -->
+      <div id="spectrumPsychicView" class="hidden flex-col justify-between h-full">
+        <div>
+          <span class="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-bold uppercase inline-block mb-2">
+            🔮 YOU ARE THE PSYCHIC
+          </span>
+          <h3 class="text-xl font-black text-white mb-2">Give Your Secret Clue!</h3>
+          <p class="text-xs text-gray-300 mb-4">
+            Only you can see the target spot on the spectrum below. Type a clue that hints at this exact location!
+          </p>
+
+          <!-- Secret Target Display -->
+          <div class="p-3 rounded-xl bg-black/50 border border-yellow-400/50 mb-4 text-center">
+            <div class="text-[11px] uppercase font-bold text-yellow-300">Your Secret Target:</div>
+            <div class="font-display font-black text-2xl text-white my-1" id="ctrlSecretTargetLabel">50%</div>
+            <div class="w-full bg-white/10 h-3 rounded-full overflow-hidden relative">
+              <div id="ctrlSecretTargetBar" class="h-full bg-gradient-to-r from-red-500 via-yellow-400 to-purple-500" style="width: 50%;"></div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Your Clue</label>
+            <input id="ctrlPsychicClueInput" type="text" maxlength="60" placeholder="e.g. Speaking to pigeons"
+              class="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/20 text-white font-bold focus:outline-none focus:border-pink-400">
+          </div>
+        </div>
+
+        <button id="btnSubmitClue" class="w-full btn-arcade btn-purple text-base py-3">
+          SEND CLUE TO GROUP 🚀
+        </button>
+      </div>
+
+      <!-- Branch B: Team Guesser View (dragging spectrum slider) -->
+      <div id="spectrumGuessView" class="flex flex-col justify-between h-full">
+        <div>
+          <span class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold uppercase inline-block mb-2">
+            🎯 THE SPECTRUM CO-OP
+          </span>
+          <h3 class="text-lg font-black text-white mb-1">Psychic's Clue:</h3>
+          <div id="ctrlSpectrumClue" class="p-3 rounded-xl bg-black/40 border border-yellow-400/40 font-display font-black text-xl text-yellow-300 text-center mb-6">
+            "Waiting for clue..."
+          </div>
+
+          <div class="flex items-center justify-between text-xs font-bold text-gray-400 mb-2">
+            <span id="ctrlSpectrumLeft" class="text-red-400">Left Pole</span>
+            <span id="ctrlSpectrumRight" class="text-purple-400">Right Pole</span>
+          </div>
+
+          <!-- Interactive Touch Slider -->
+          <div class="my-6 px-4">
+            <div class="spectrum-track" id="ctrlSpectrumTrack">
+              <div class="spectrum-dial" id="ctrlSpectrumDial" style="left: 50%;">
+                🎯
+              </div>
+            </div>
+            <div class="text-center font-display font-bold text-cyan-300 text-sm mt-3" id="ctrlSliderValLabel">
+              Dial Position: 50%
+            </div>
+          </div>
+        </div>
+
+        <button id="btnLockSpectrumGuess" class="w-full btn-arcade btn-primary text-base py-3">
+          LOCK IN GUESS 🔒
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 5: MAJORITY RULES CONTROLLER ================= -->
+    <div id="ctrlStageMajority" class="party-card p-5 hidden flex-col justify-between max-w-md mx-auto w-full h-full">
+      
+      <!-- Step 1: Writing Phase -->
+      <div id="majorityInputView" class="flex flex-col justify-between h-full">
+        <div>
+          <span class="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-[10px] font-bold uppercase inline-block mb-2">
+            👑 MAJORITY RULES
+          </span>
+          <h3 id="ctrlMajorityPrompt" class="text-lg font-black text-white mb-4 leading-snug">
+            Prompt will appear here...
+          </h3>
+
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Your Funny / Savvy Answer</label>
+            <textarea id="ctrlMajorityText" rows="3" maxlength="90" placeholder="Type what you think will win or match the crowd..."
+              class="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/20 text-white font-bold resize-none focus:outline-none focus:border-yellow-400"></textarea>
+          </div>
+        </div>
+
+        <button id="btnSubmitMajorityText" class="w-full btn-arcade btn-gold text-base py-3">
+          SUBMIT ANSWER ✍️
+        </button>
+      </div>
+
+      <!-- Step 2: Voting Phase -->
+      <div id="majorityVoteView" class="hidden flex-col justify-between h-full">
+        <div>
+          <span class="px-3 py-1 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40 text-[10px] font-bold uppercase inline-block mb-2">
+            🗳️ VOTE FOR THE BEST ANSWER
+          </span>
+          <p class="text-xs text-gray-300 mb-3">
+            Pick the answer you like most or the one you think the majority will choose:
+          </p>
+
+          <div id="ctrlMajorityVoteCards" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+            <!-- Cards injected dynamically -->
+          </div>
+        </div>
+
+        <div class="text-xs text-center text-gray-400 pt-2">
+          Vote locked on tap!
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 6: RESULT FEEDBACK OVERLAY ================= -->
+    <div id="ctrlStageResult" class="party-card p-6 hidden flex-col items-center justify-center text-center max-w-md mx-auto w-full h-full">
+      <div id="ctrlResultIcon" class="text-6xl mb-3">🎉</div>
+      <h3 id="ctrlResultTitle" class="text-2xl font-black text-white mb-2">CORRECT!</h3>
+      <p id="ctrlResultSubtitle" class="text-sm text-yellow-300 font-bold mb-6">+1,150 Points Earned</p>
+      
+      <div class="px-4 py-2 rounded-xl bg-white/10 text-xs font-bold text-gray-300">
+        Look up at the TV for current standings!
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Sound Engine -->
+  <script src="/js/sounds.js"></script>
+  <!-- Controller Logic Script -->
+  <script src="/js/controller.js"></script>
+</body>
+</html>
+

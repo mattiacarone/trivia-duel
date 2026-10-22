@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia Duel - Multiplayer Party Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="p-6 md:p-12 flex flex-col justify-between items-center text-center">
+
+  <!-- Header Branding -->
+  <header class="mb-10 max-w-3xl">
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40 text-xs font-bold uppercase tracking-wider mb-4">
+      <span>🎉</span> Next-Gen Jackbox & Kahoot Style Party Engine
+    </div>
+    <h1 class="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-300 mb-4">
+      TRIVIA DUEL
+    </h1>
+    <p class="text-lg md:text-xl text-gray-300 font-medium max-w-2xl mx-auto">
+      Host on your TV or Laptop. Contestants join on their phones as controllers via a simple 4-digit code. Zero app downloads needed!
+    </p>
+  </header>
+
+  <!-- Big Launch Choice Cards -->
+  <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+    
+    <!-- Option A: Host Screen (TV/Laptop) -->
+    <div class="party-card p-8 flex flex-col justify-between text-left border-2 border-purple-400/50 hover:border-purple-400 transition transform hover:-translate-y-1">
+      <div>
+        <div class="w-14 h-14 rounded-2xl bg-purple-600/30 border border-purple-400/50 flex items-center justify-center text-3xl mb-4">
+          📺
+        </div>
+        <div class="text-xs font-bold uppercase text-purple-400 tracking-wider mb-1">Big Screen Experience</div>
+        <h2 class="text-3xl font-black text-white mb-2">Host Game Board</h2>
+        <p class="text-sm text-gray-300 leading-relaxed mb-6">
+          Display on a TV, monitor, projector, or stream via Twitch/Zoom. Generates a live QR code, timer, arcade sounds, and podium.
+        </p>
+      </div>
+
+      <a href="/host" class="btn-arcade btn-primary text-center text-lg py-3.5">
+        START AS HOST 🚀
+      </a>
+    </div>
+
+    <!-- Option B: Mobile Controller (Player) -->
+    <div class="party-card p-8 flex flex-col justify-between text-left border-2 border-cyan-400/50 hover:border-cyan-400 transition transform hover:-translate-y-1">
+      <div>
+        <div class="w-14 h-14 rounded-2xl bg-cyan-600/30 border border-cyan-400/50 flex items-center justify-center text-3xl mb-4">
+          📱
+        </div>
+        <div class="text-xs font-bold uppercase text-cyan-400 tracking-wider mb-1">Contestant Controller</div>
+        <h2 class="text-3xl font-black text-white mb-2">Join on Phone</h2>
+        <p class="text-sm text-gray-300 leading-relaxed mb-4">
+          Already have a room code from a friend or stream? Jump right into the action with your phone controller!
+        </p>
+
+        <!-- Fast Room Jump -->
+        <div class="flex items-center gap-2 mb-6">
+          <input id="quickRoomCode" type="text" maxlength="4" placeholder="ROOM"
+            class="w-32 uppercase font-display font-black text-xl text-center px-3 py-2.5 rounded-xl bg-black/50 border border-white/20 text-yellow-300 focus:outline-none focus:border-cyan-400">
+          <button id="btnQuickJoin" class="btn-arcade btn-cyan text-sm py-2.5 px-4 flex-1">
+            Join Room →
+          </button>
+        </div>
+      </div>
+
+      <a href="/play" class="btn-arcade btn-dark text-center text-base py-3">
+        Open Controller Screen
+      </a>
+    </div>
+
+  </main>
+
+  <!-- Showcase: Core Game Modes & Advanced Monetization Architecture -->
+  <section class="w-full max-w-5xl mb-12 text-left">
+    <div class="flex items-center justify-between mb-6 border-b border-white/10 pb-3">
+      <h3 class="text-2xl font-black text-white flex items-center gap-2">
+        <span>⭐</span> Game Modes & Monetization Strategy
+      </h3>
+      <span class="text-xs font-bold uppercase text-pink-400">Scalable SaaS Model</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Feature 1 -->
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10">
+        <div class="text-3xl mb-2">🎯</div>
+        <h4 class="font-bold text-lg text-pink-300 mb-1">"The Spectrum" Co-op</h4>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          Wavelength-inspired gameplay. One psychic gives a hint; the entire group cooperates and dials in where it lands between two extremes.
+        </p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10">
+        <div class="text-3xl mb-2">👑</div>
+        <h4 class="font-bold text-lg text-yellow-300 mb-1">"Majority Rules" Mode</h4>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          Jackbox / Family Feud subjective prompt game. Contestants submit witty answers on mobile; everyone votes, rewarding crowd consensus!
+        </p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="p-6 rounded-2xl bg-white/5 border border-white/10">
+        <div class="text-3xl mb-2">💰</div>
+        <h4 class="font-bold text-lg text-emerald-300 mb-1">SaaS & Niche Expansion Packs</h4>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          $1.99 - $4.99 themed DLCs (Dev Jokes, 90s Cartoons, True Crime), $4.99/mo "Pro Host" tier with 50 players, and Etsy physical PDF printables.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-xs text-gray-500 font-mono">
+    Trivia Duel Multiplayer Prototype • Built with Node.js, Express, Socket.IO & Web Audio API
+  </footer>
+
+  <script>
+    document.getElementById('btnQuickJoin').addEventListener('click', () => {
+      const code = document.getElementById('quickRoomCode').value.trim().toUpperCase();
+      if (code) {
+        window.location.href = `/play?room=${code}`;
+      } else {
+        window.location.href = '/play';
+      }
+    });
+  </script>
+</body>
+</html>
+

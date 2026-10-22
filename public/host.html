@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia Duel - Party Host Board</title>
+  <!-- Tailwind CSS CDN for rapid utility classes -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="p-4 md:p-6 flex flex-col justify-between">
+
+  <!-- TOP HEADER / PARTY STATUS BAR -->
+  <header class="party-card px-6 py-4 flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">⚡</span>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-300">
+            TRIVIA DUEL
+          </h1>
+          <p class="text-xs uppercase font-bold tracking-widest text-purple-300">Group Party Game</p>
+        </div>
+      </div>
+
+      <!-- Pro Host Status Badge -->
+      <div id="proBadge" class="hidden px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-purple-950 font-black text-xs tracking-wider flex items-center gap-1 shadow-lg">
+        <span>⭐</span> PRO HOST
+      </div>
+    </div>
+
+    <!-- Center: Huge Room Code -->
+    <div class="flex items-center gap-3 bg-black/40 px-5 py-2.5 rounded-2xl border border-white/15">
+      <div class="text-right">
+        <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Join Code</div>
+        <div id="displayRoomCode" class="font-display text-2xl md:text-3xl font-black text-yellow-300 tracking-widest">
+          ----
+        </div>
+      </div>
+      <button id="btnCopyLink" title="Copy join link" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition text-sm">
+        📋
+      </button>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-2 md:gap-3 flex-wrap">
+      <!-- Player Counter -->
+      <div class="px-3 py-1.5 rounded-xl bg-white/10 text-sm font-bold flex items-center gap-2">
+        <span>👥</span>
+        <span id="playerCount">0</span>
+        <span class="text-xs text-gray-400" id="playerLimitLabel">/ 8</span>
+      </div>
+
+      <!-- AI Studio Button -->
+      <button id="btnOpenAiStudio" class="btn-arcade btn-purple text-xs md:text-sm py-2 px-3 md:px-4">
+        ✨ AI Studio
+      </button>
+
+      <!-- Store / Packs Button -->
+      <button id="btnOpenStore" class="btn-arcade btn-gold text-xs md:text-sm py-2 px-3 md:px-4">
+        🛒 Store & Packs
+      </button>
+
+      <!-- Audio Mute Button -->
+      <button id="btnSoundToggle" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition text-lg" title="Toggle Sound">
+        🔊
+      </button>
+
+      <!-- Phone Simulator Toggle -->
+      <button id="btnToggleSim" class="p-2.5 rounded-xl bg-purple-600/60 hover:bg-purple-600 border border-purple-400/40 text-lg transition" title="Toggle Phone Controller Simulator">
+        📱
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN DYNAMIC STAGE CONTAINER -->
+  <main id="stageContainer" class="flex-1 flex flex-col justify-center items-center relative z-10 w-full max-w-7xl mx-auto">
+    
+    <!-- ================= STAGE 1: LOBBY ================= -->
+    <div id="stageLobby" class="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      
+      <!-- Left Column: Join Instructions & QR Code -->
+      <div class="party-card lg:col-span-4 p-6 flex flex-col items-center justify-between text-center">
+        <div>
+          <span class="pulse-badge bg-pink-500/20 text-pink-400 border border-pink-500/40 mb-3">
+            Party Board Ready
+          </span>
+          <h2 class="text-2xl font-bold mb-1">Grab Your Phone!</h2>
+          <p class="text-gray-300 text-sm mb-4">No app download needed. Scan QR or visit:</p>
+          <div class="bg-black/40 border border-white/20 rounded-xl px-4 py-2 text-cyan-300 font-mono text-sm font-bold tracking-wide break-all mb-4" id="joinUrlText">
+            http://localhost:3000/play
+          </div>
+        </div>
+
+        <!-- QR Code Canvas / Img -->
+        <div class="p-3 bg-white rounded-2xl shadow-2xl mb-4 transform hover:scale-105 transition duration-200">
+          <img id="qrCodeImg" src="" alt="Scan to join" class="w-48 h-48 rounded-xl object-contain">
+        </div>
+
+        <div class="w-full flex items-center justify-between bg-white/5 rounded-xl px-4 py-2 border border-white/10 text-xs">
+          <span class="text-gray-400">Room Code:</span>
+          <span id="qrRoomCode" class="font-display font-black text-xl text-yellow-300 tracking-wider">----</span>
+        </div>
+      </div>
+
+      <!-- Right Column: Players Roster & Game Launcher -->
+      <div class="party-card lg:col-span-8 p-6 flex flex-col justify-between">
+        
+        <!-- Game Mode Selection Tabs -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 class="text-xl font-bold flex items-center gap-2">
+              <span>🎮</span> Select Party Game Mode
+            </h3>
+            <!-- Quick Add Bots for Solo Testing -->
+            <div class="flex items-center gap-2">
+              <button id="btnAddBot" class="btn-arcade btn-dark text-xs py-1.5 px-3">
+                +1 AI Bot
+              </button>
+              <button id="btnAddThreeBots" class="btn-arcade btn-dark text-xs py-1.5 px-3">
+                +3 AI Bots 🤖
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            <!-- Mode 1: Speed Duel -->
+            <button class="mode-card active p-4 rounded-2xl border-2 text-left transition flex flex-col justify-between border-cyan-400 bg-cyan-950/30 shadow-lg" data-mode="speed">
+              <div>
+                <div class="text-2xl mb-1">⚡</div>
+                <div class="font-display font-bold text-base text-cyan-300">Speed Duel</div>
+                <div class="text-xs text-gray-300 mt-1">15s rapid-fire Kahoot-style battle royale with streak multipliers.</div>
+              </div>
+              <span class="text-[10px] font-bold uppercase mt-3 text-cyan-400">Competitive</span>
+            </button>
+
+            <!-- Mode 2: The Spectrum -->
+            <button class="mode-card p-4 rounded-2xl border-2 text-left transition flex flex-col justify-between border-white/15 bg-white/5 hover:bg-white/10" data-mode="spectrum">
+              <div>
+                <div class="text-2xl mb-1">🎯</div>
+                <div class="font-display font-bold text-base text-pink-300">The Spectrum</div>
+                <div class="text-xs text-gray-300 mt-1">Wavelength co-op! One psychic clue-giver, group dials in target.</div>
+              </div>
+              <span class="text-[10px] font-bold uppercase mt-3 text-pink-400">Cooperative</span>
+            </button>
+
+            <!-- Mode 3: Majority Rules -->
+            <button class="mode-card p-4 rounded-2xl border-2 text-left transition flex flex-col justify-between border-white/15 bg-white/5 hover:bg-white/10" data-mode="majority">
+              <div>
+                <div class="text-2xl mb-1">👑</div>
+                <div class="font-display font-bold text-base text-yellow-300">Majority Rules</div>
+                <div class="text-xs text-gray-300 mt-1">Type hilarious subjective answers on phones, vote & match the crowd.</div>
+              </div>
+              <span class="text-[10px] font-bold uppercase mt-3 text-yellow-400">Social Fun</span>
+            </button>
+          </div>
+
+          <!-- Active Question Pack Selector (for Speed Mode) -->
+          <div id="packSelectorContainer" class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-bold text-gray-300">Selected Trivia Pack:</span>
+              <button id="btnBrowsePacks" class="text-xs text-cyan-400 hover:underline">Change Pack (5 Available)</button>
+            </div>
+            <div id="activePackBanner" class="p-3 rounded-xl bg-purple-900/40 border border-purple-400/30 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl" id="packIcon">🎉</span>
+                <div>
+                  <div class="font-bold text-sm text-purple-200" id="packTitle">Free Party Starter</div>
+                  <div class="text-xs text-gray-400" id="packCategory">General Pop Culture & Quirks</div>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 text-xs font-bold" id="packStatusBadge">
+                FREE / UNLOCKED
+              </span>
+            </div>
+          </div>
+
+          <!-- Connected Players Roster -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-bold uppercase text-gray-400 tracking-wider">
+                Contestants In Lobby (<span id="rosterCount">0</span>)
+              </span>
+              <span class="text-xs text-gray-400">Join using phone controller</span>
+            </div>
+
+            <div id="playersGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-48 overflow-y-auto p-1">
+              <!-- Player Cards injected dynamically -->
+              <div class="col-span-full py-6 text-center text-gray-400 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2">
+                <span class="text-3xl animate-bounce">📱</span>
+                <p class="text-sm">Waiting for players to connect...</p>
+                <p class="text-xs text-gray-500">Tip: Click "+1 AI Bot" or "+3 AI Bots" above to test right now!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Launch Button -->
+        <div class="pt-4 border-t border-white/10 flex items-center justify-between">
+          <div class="text-xs text-gray-400">
+            5 Rounds per game • Real-time Phone Sync
+          </div>
+          <button id="btnStartGame" class="btn-arcade btn-green text-lg px-8 py-3 flex items-center gap-2">
+            <span>START PARTY</span>
+            <span>🚀</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= STAGE 2: SPEED TRIVIA QUESTION ================= -->
+    <div id="stageSpeedQuestion" class="w-full hidden flex-col items-center">
+      
+      <!-- Top Question Header & Timer -->
+      <div class="w-full flex items-center justify-between mb-4 px-2">
+        <div class="flex items-center gap-3">
+          <span class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold uppercase" id="speedRoundCounter">
+            Round 1 / 5
+          </span>
+          <span class="text-xs text-gray-400" id="speedPackName">Pop Culture</span>
+        </div>
+
+        <!-- Circular Animated Timer -->
+        <div class="relative w-16 h-16 flex items-center justify-center">
+          <svg class="w-16 h-16 transform -rotate-90">
+            <circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,0.15)" stroke-width="6" fill="transparent"/>
+            <circle id="timerCircle" cx="32" cy="32" r="28" stroke="#1dd1a1" stroke-width="6" fill="transparent"
+              stroke-dasharray="175.9" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-1000 linear"/>
+          </svg>
+          <span id="timerSeconds" class="absolute font-display font-black text-2xl text-white">15</span>
+        </div>
+
+        <!-- Locked-in Count -->
+        <div class="px-4 py-2 rounded-xl bg-white/10 border border-white/15 text-sm font-bold flex items-center gap-2">
+          <span>Answers:</span>
+          <span id="speedAnswerCount" class="text-yellow-300 text-base">0 / 0</span>
+        </div>
+      </div>
+
+      <!-- Question Text Billboard -->
+      <div class="party-card w-full p-8 md:p-10 text-center mb-6 shadow-2xl">
+        <h2 id="speedQuestionText" class="text-2xl md:text-4xl font-black leading-tight text-white drop-shadow">
+          Loading Question...
+        </h2>
+      </div>
+
+      <!-- 4 Kahoot Shape Cards -->
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Option 0: Red Triangle -->
+        <div id="optCard0" class="shape-pad pad-red flex-row gap-4 p-5 text-left justify-start">
+          <div class="w-12 h-12 rounded-xl bg-black/25 flex items-center justify-center text-2xl font-black shrink-0">
+            ▲
+          </div>
+          <span id="optText0" class="text-lg md:text-xl font-bold flex-1">Option 1</span>
+        </div>
+
+        <!-- Option 1: Blue Diamond -->
+        <div id="optCard1" class="shape-pad pad-blue flex-row gap-4 p-5 text-left justify-start">
+          <div class="w-12 h-12 rounded-xl bg-black/25 flex items-center justify-center text-2xl font-black shrink-0">
+            ◆
+          </div>
+          <span id="optText1" class="text-lg md:text-xl font-bold flex-1">Option 2</span>
+        </div>
+
+        <!-- Option 2: Yellow Circle -->
+        <div id="optCard2" class="shape-pad pad-yellow flex-row gap-4 p-5 text-left justify-start">
+          <div class="w-12 h-12 rounded-xl bg-black/25 flex items-center justify-center text-2xl font-black shrink-0 text-amber-950">
+            ●
+          </div>
+          <span id="optText2" class="text-lg md:text-xl font-bold flex-1 text-amber-950">Option 3</span>
+        </div>
+
+        <!-- Option 3: Green Square -->
+        <div id="optCard3" class="shape-pad pad-green flex-row gap-4 p-5 text-left justify-start">
+          <div class="w-12 h-12 rounded-xl bg-black/25 flex items-center justify-center text-2xl font-black shrink-0">
+            ■
+          </div>
+          <span id="optText3" class="text-lg md:text-xl font-bold flex-1">Option 4</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 3: SPEED TRIVIA RESULT & LEADERBOARD ================= -->
+    <div id="stageSpeedResult" class="w-full hidden flex-col items-center">
+      <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- Left: Question Recap & Fun Fact -->
+        <div class="party-card lg:col-span-7 p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase">
+                Correct Answer Revealed
+              </span>
+            </div>
+            
+            <h3 id="resultQuestionTitle" class="text-xl font-bold mb-4 text-gray-200">
+              Question Recap
+            </h3>
+
+            <!-- Winning Option Display -->
+            <div id="resultWinningCard" class="p-4 rounded-2xl bg-emerald-500/20 border-2 border-emerald-400 flex items-center gap-4 mb-6 shadow-lg">
+              <div id="resultWinningShape" class="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-2xl font-black">
+                ✓
+              </div>
+              <div>
+                <div class="text-xs uppercase text-emerald-300 font-bold">The Answer Is:</div>
+                <div id="resultWinningText" class="text-xl font-black text-white">Winning text here</div>
+              </div>
+            </div>
+
+            <!-- Fun Fact Box -->
+            <div class="p-4 rounded-2xl bg-black/40 border border-white/10 flex gap-3 mb-4">
+              <span class="text-2xl">💡</span>
+              <div>
+                <div class="text-xs uppercase font-bold text-yellow-300 mb-1">Fun Fact:</div>
+                <p id="resultFunFact" class="text-sm text-gray-300 leading-relaxed">
+                  Trivia detail explanation will appear here.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Answer Breakdown Chart (How many players picked each) -->
+          <div class="grid grid-cols-4 gap-2 pt-4 border-t border-white/10">
+            <div class="text-center p-2 rounded-xl bg-red-950/40 border border-red-500/30">
+              <div class="text-xs font-bold text-red-400">▲ Red</div>
+              <div id="countOpt0" class="text-lg font-black">0</div>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-blue-950/40 border border-blue-500/30">
+              <div class="text-xs font-bold text-blue-400">◆ Blue</div>
+              <div id="countOpt1" class="text-lg font-black">0</div>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-amber-950/40 border border-amber-500/30">
+              <div class="text-xs font-bold text-amber-400">● Yellow</div>
+              <div id="countOpt2" class="text-lg font-black">0</div>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+              <div class="text-xs font-bold text-emerald-400">■ Green</div>
+              <div id="countOpt3" class="text-lg font-black">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Live Round Leaderboard -->
+        <div class="party-card lg:col-span-5 p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-xl font-bold flex items-center gap-2">
+                <span>🏆</span> Current Standings
+              </h3>
+              <span class="text-xs text-gray-400">Points & Streaks</span>
+            </div>
+
+            <div id="speedLeaderboardList" class="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+              <!-- Player rankings injected dynamically -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-white/10 flex justify-end">
+            <button id="btnNextRound" class="btn-arcade btn-primary text-base px-6 py-2.5 flex items-center gap-2">
+              <span>Next Round</span>
+              <span>➡️</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= STAGE 4: THE SPECTRUM CO-OP ================= -->
+    <div id="stageSpectrum" class="w-full hidden flex-col items-center">
+      
+      <div class="party-card w-full p-8 md:p-10 mb-6 flex flex-col items-center text-center">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="px-3 py-1 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/40 text-xs font-bold uppercase" id="spectrumRoundCounter">
+            The Spectrum Co-op • Round 1
+          </span>
+          <span class="text-xs text-gray-400" id="spectrumCategoryLabel">Superpowers</span>
+        </div>
+
+        <!-- Spectrum Pole Labels -->
+        <div class="w-full flex items-center justify-between gap-4 mt-2 mb-8">
+          <div class="px-4 py-2.5 rounded-2xl bg-red-600/30 border-2 border-red-500 text-red-200 font-display font-bold text-base md:text-lg max-w-[45%] text-left" id="spectrumLeftLabel">
+            Worst Superpower
+          </div>
+          <div class="text-2xl font-black text-gray-400">⟷</div>
+          <div class="px-4 py-2.5 rounded-2xl bg-purple-600/30 border-2 border-purple-500 text-purple-200 font-display font-bold text-base md:text-lg max-w-[45%] text-right" id="spectrumRightLabel">
+            God-Tier Superpower
+          </div>
+        </div>
+
+        <!-- Psychic & Clue Banner -->
+        <div class="w-full max-w-2xl bg-black/40 border border-white/15 rounded-2xl p-6 mb-8 text-center">
+          <div class="text-xs uppercase tracking-widest text-pink-400 font-bold mb-1" id="spectrumPsychicStatus">
+            🔮 Psychic is thinking of a clue...
+          </div>
+          <div id="spectrumClueDisplay" class="font-display text-2xl md:text-3xl font-black text-yellow-300 italic min-h-[48px] flex items-center justify-center">
+            "..."
+          </div>
+        </div>
+
+        <!-- Giant Spectrum Track & Live Team Dial -->
+        <div class="w-full max-w-4xl px-8 my-6">
+          <div class="spectrum-track" id="spectrumTrack">
+            <!-- Secret Target Bullseye (Hidden until reveal) -->
+            <div id="spectrumTargetZone" class="spectrum-target-zone hidden" style="left: 50%; width: 14%;">
+              <span class="text-xs font-black text-white">🎯</span>
+            </div>
+
+            <!-- Team Dial Indicator -->
+            <div id="spectrumTeamDial" class="spectrum-dial" style="left: 50%;">
+              🎯
+            </div>
+          </div>
+        </div>
+
+        <!-- Result / Scoring Feedback Banner -->
+        <div id="spectrumResultBanner" class="hidden mt-6 p-4 rounded-2xl bg-white/10 border border-white/20 text-center">
+          <div id="spectrumZoneTitle" class="text-2xl font-black text-yellow-300">BULLSEYE! 🎯</div>
+          <p id="spectrumPointsText" class="text-sm text-gray-300">+1,000 Team Points Awarded!</p>
+        </div>
+      </div>
+
+      <div class="w-full flex justify-end">
+        <button id="btnSpectrumNext" class="btn-arcade btn-primary text-base px-6 py-2.5 hidden">
+          Next Round ➡️
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 5: MAJORITY RULES ================= -->
+    <div id="stageMajority" class="w-full hidden flex-col items-center">
+      
+      <div class="party-card w-full p-8 md:p-10 mb-6 flex flex-col items-center text-center">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-xs font-bold uppercase" id="majorityRoundCounter">
+            Majority Rules • Round 1
+          </span>
+          <span class="text-xs text-gray-400" id="majorityCategoryLabel">Crowd Consensus</span>
+        </div>
+
+        <!-- Subjective Prompt Billboard -->
+        <h2 id="majorityPromptText" class="text-2xl md:text-4xl font-black text-white mb-6 max-w-3xl">
+          What is the absolute best late-night fast food order at 2:00 AM?
+        </h2>
+
+        <!-- Phase Status & Progress -->
+        <div class="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/10 border border-white/15 text-sm font-bold mb-8">
+          <span id="majorityPhaseIcon">✍️</span>
+          <span id="majorityStatusText">Players are writing funny answers on their phones...</span>
+          <span id="majorityCounterBadge" class="text-cyan-300 ml-2">0 / 0</span>
+        </div>
+
+        <!-- Cards Grid (Flip & Votes) -->
+        <div id="majorityCardsGrid" class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+          <!-- Cards dynamically injected -->
+        </div>
+      </div>
+
+      <div class="w-full flex justify-end">
+        <button id="btnMajorityNext" class="btn-arcade btn-primary text-base px-6 py-2.5 hidden">
+          Next Round ➡️
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= STAGE 6: GAME OVER PODIUM ================= -->
+    <div id="stagePodium" class="w-full hidden flex-col items-center">
+      <div class="party-card w-full max-w-4xl p-8 md:p-12 text-center mb-6">
+        <span class="pulse-badge bg-yellow-400/20 text-yellow-300 border border-yellow-400/40 mb-3">
+          Final Results
+        </span>
+        <h2 class="text-3xl md:text-5xl font-black text-white mb-8">
+          👑 PARTY CHAMPIONS 👑
+        </h2>
+
+        <!-- 3D Podium Columns -->
+        <div class="flex items-end justify-center gap-4 md:gap-8 max-w-2xl mx-auto mb-10 h-72">
+          
+          <!-- 2nd Place -->
+          <div class="podium-stand podium-2 flex-1">
+            <div class="text-3xl mb-1" id="podium2Avatar">🥈</div>
+            <div class="font-bold text-sm text-gray-900 truncate w-full" id="podium2Name">2nd Place</div>
+            <div class="font-black text-xs text-gray-800" id="podium2Score">0 pts</div>
+            <div class="mt-auto font-display font-black text-4xl text-gray-900/40">2</div>
+          </div>
+
+          <!-- 1st Place (Winner) -->
+          <div class="podium-stand podium-1 flex-1 shadow-2xl">
+            <div class="text-4xl mb-1 animate-bounce" id="podium1Avatar">👑</div>
+            <div class="font-extrabold text-base text-amber-950 truncate w-full" id="podium1Name">Winner</div>
+            <div class="font-black text-sm text-amber-900" id="podium1Score">0 pts</div>
+            <div class="mt-auto font-display font-black text-6xl text-amber-950/40">1</div>
+          </div>
+
+          <!-- 3rd Place -->
+          <div class="podium-stand podium-3 flex-1">
+            <div class="text-3xl mb-1" id="podium3Avatar">🥉</div>
+            <div class="font-bold text-sm text-white truncate w-full" id="podium3Name">3rd Place</div>
+            <div class="font-black text-xs text-white/90" id="podium3Score">0 pts</div>
+            <div class="mt-auto font-display font-black text-3xl text-white/40">3</div>
+          </div>
+        </div>
+
+        <!-- Rematch Actions -->
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <button id="btnRematch" class="btn-arcade btn-green text-lg px-8 py-3">
+            Play Rematch 🔄
+          </button>
+          <button id="btnBackToLobby" class="btn-arcade btn-dark text-base px-6 py-3">
+            Change Mode & Pack ⚙️
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= MONETIZATION & PACK STORE MODAL ================= -->
+  <div id="modalStore" class="party-modal-backdrop">
+    <div class="party-modal p-6 md:p-8">
+      <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🛒</span>
+          <div>
+            <h3 class="text-2xl font-black text-yellow-300">Trivia Duel Expansion Store</h3>
+            <p class="text-xs text-gray-400">Unlock themed trivia packs, SaaS host tools & printable party kits</p>
+          </div>
+        </div>
+        <button id="btnCloseStore" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300">✕</button>
+      </div>
+
+      <!-- Pro Host Subscription Banner -->
+      <div class="p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-purple-600/30 to-pink-600/20 border-2 border-amber-400/50 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2.5 py-0.5 rounded-full bg-amber-400 text-purple-950 font-black text-[10px] uppercase">
+              RECOMMENDED FOR EVENTS & STREAMERS
+            </span>
+          </div>
+          <h4 class="text-xl font-black text-white">"Pro Host" Membership</h4>
+          <p class="text-xs text-gray-300 max-w-md mt-1">
+            50-player capacity, custom logo branding, custom 4-digit room code, profanity filter, and unlimited AI question packs!
+          </p>
+        </div>
+        <div class="text-center shrink-0">
+          <div class="text-2xl font-black text-yellow-300 mb-1">$4.99 <span class="text-xs font-normal text-gray-300">/ mo</span></div>
+          <button id="btnBuyProSub" class="btn-arcade btn-gold text-xs py-2 px-4 whitespace-nowrap">
+            ⚡ Upgrade to Pro
+          </button>
+        </div>
+      </div>
+
+      <!-- Themed Premium Packs Grid -->
+      <h4 class="text-base font-bold uppercase text-gray-400 tracking-wider mb-3">Themed Expansion Packs</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="storePacksGrid">
+        <!-- Store packs populated dynamically -->
+      </div>
+
+      <!-- Printable Etsy Physical Flashcards Cross-Sell -->
+      <div class="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🖨️</span>
+          <div>
+            <h5 class="font-bold text-sm text-purple-200">Etsy Printable Party Kits (PDF)</h5>
+            <p class="text-xs text-gray-400">Instantly generate high-resolution flashcards & game night scorecards for in-person party tables.</p>
+          </div>
+        </div>
+        <button id="btnDownloadPrintables" class="btn-arcade btn-cyan text-xs py-2 px-3 whitespace-nowrap">
+          📄 Preview PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= AI PACK GENERATOR MODAL (GEMINI API) ================= -->
+  <div id="modalAiStudio" class="party-modal-backdrop">
+    <div class="party-modal p-6 md:p-8">
+      <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">✨</span>
+          <div>
+            <h3 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">
+              Gemini AI Content Engine
+            </h3>
+            <p class="text-xs text-gray-400">Instantly generate thousands of custom trivia questions on any topic in seconds</p>
+          </div>
+        </div>
+        <button id="btnCloseAiStudio" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300">✕</button>
+      </div>
+
+      <div class="space-y-4 mb-6">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
+            Trivia Topic / Niche Concept
+          </label>
+          <input id="aiTopicInput" type="text" placeholder="e.g., 80s Hair Metal, Silicon Valley Memes, True Crime, Medical School" 
+            class="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Game Mode</label>
+            <select id="aiModeSelect" class="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/20 text-white focus:outline-none focus:border-cyan-400">
+              <option value="speed">Speed Duel (Multiple Choice)</option>
+              <option value="spectrum">The Spectrum (Opposites)</option>
+              <option value="majority">Majority Rules (Open Subjective)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Vibe & Difficulty</label>
+            <select id="aiDifficultySelect" class="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/20 text-white focus:outline-none focus:border-cyan-400">
+              <option value="casual">Casual Party (Fun & Light)</option>
+              <option value="spicy">Spicy & Humorous</option>
+              <option value="hardcore">Hardcore Trivia Buffs</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="btnGeneratePack" class="w-full btn-arcade btn-purple text-base py-3 flex items-center justify-center gap-2">
+          <span>Generate 5-Question Pack with AI</span>
+          <span>⚡</span>
+        </button>
+      </div>
+
+      <!-- Generated Pack Preview Container -->
+      <div id="aiPreviewBox" class="hidden p-4 rounded-2xl bg-black/50 border border-cyan-400/40">
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-bold text-cyan-300 text-sm" id="aiPackTitle">Generated Pack Title</div>
+          <span class="px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 text-[10px] font-bold">READY TO PLAY</span>
+        </div>
+        <div id="aiQuestionsList" class="space-y-2 text-xs text-gray-300 mb-4 max-h-48 overflow-y-auto">
+          <!-- Injected dynamically -->
+        </div>
+        <button id="btnApplyAiPack" class="w-full btn-arcade btn-green text-sm py-2.5">
+          Load AI Pack Into Active Game Lobby 🎮
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= FLOATING PHONE CONTROLLER SIMULATOR DOCK ================= -->
+  <div id="simDock" class="sim-dock collapsed">
+    <div class="sim-dock-notch"></div>
+    <div class="bg-purple-950 px-3 py-1 flex items-center justify-between text-[11px] font-bold border-b border-white/10">
+      <span class="text-cyan-300">📱 Mobile Player Controller</span>
+      <button id="btnCloseSim" class="text-gray-400 hover:text-white">✕</button>
+    </div>
+    <iframe id="simIframe" src="/play"></iframe>
+  </div>
+
+  <!-- Audio Synthesizer Engine -->
+  <script src="/js/sounds.js"></script>
+  <!-- Questions & Packs Data -->
+  <script src="/js/packs.js"></script>
+  <!-- Host Game Controller Script -->
+  <script src="/js/host.js"></script>
+</body>
+</html>
+
