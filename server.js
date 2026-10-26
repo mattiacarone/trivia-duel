@@ -26,17 +26,21 @@ app.get('/play', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'controller.html'));
 });
 
-// Helper: detect local network IP
+// Helper: detect local network IP (skipping link-local 169.254.* addresses)
 function getLocalIp() {
   const nets = os.networkInterfaces();
+  let candidate = null;
   for (const name of Object.keys(nets)) {
     for (const net of nets[name]) {
       if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
+        if (!net.address.startsWith('169.254.')) {
+          return net.address;
+        }
+        candidate = candidate || net.address;
       }
     }
   }
-  return 'localhost';
+  return candidate || 'localhost';
 }
 
 const LOCAL_IP = getLocalIp();
