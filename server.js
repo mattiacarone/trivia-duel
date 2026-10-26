@@ -694,6 +694,7 @@ function finishSpeedQuestion(roomCode) {
 
   io.to(roomCode).emit('round:speed_result', {
     correctIndex: q.answer,
+    correctText: q.options[q.answer],
     funFact: q.funFact,
     optionCounts,
     roundResults,

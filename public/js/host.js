@@ -559,10 +559,10 @@ function switchStage(stageId) {
   stages.forEach(s => {
     if (s.id === stageId) {
       s.classList.remove('hidden');
-      s.classList.add('flex');
+      s.classList.add('flex', 'pop-bounce');
     } else {
       s.classList.add('hidden');
-      s.classList.remove('flex');
+      s.classList.remove('flex', 'pop-bounce');
     }
   });
 }
@@ -572,6 +572,7 @@ function startTimer(durationSeconds) {
   clearInterval(currentTimerInterval);
   secondsRemaining = durationSeconds;
   elements.timerSeconds.textContent = secondsRemaining;
+  elements.timerSeconds.classList.remove('timer-urgent');
   
   const circumference = 175.9;
   elements.timerCircle.style.strokeDashoffset = '0';
@@ -587,13 +588,16 @@ function startTimer(durationSeconds) {
 
     if (secondsRemaining <= 5) {
       elements.timerCircle.style.stroke = '#ff3838';
+      elements.timerSeconds.classList.add('timer-urgent');
       window.sound.playTick(true);
     } else {
+      elements.timerSeconds.classList.remove('timer-urgent');
       window.sound.playTick(false);
     }
 
     if (secondsRemaining <= 0) {
       clearInterval(currentTimerInterval);
+      elements.timerSeconds.classList.remove('timer-urgent');
       window.sound.playWrong();
     }
   }, 1000);
@@ -604,8 +608,8 @@ function renderPlayers(players) {
   if (players.length === 0) {
     elements.playersGrid.innerHTML = `
       <div class="col-span-full py-6 text-center text-gray-400 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2">
-        <span class="text-3xl animate-bounce">📱</span>
-        <p class="text-sm">Waiting for players to connect...</p>
+        <span class="text-4xl animate-bounce">📱</span>
+        <p class="text-sm font-bold">Waiting for players to connect...</p>
         <p class="text-xs text-gray-500">Tip: Click "+1 AI Bot" or "+3 AI Bots" above to test right now!</p>
       </div>
     `;
@@ -613,12 +617,12 @@ function renderPlayers(players) {
   }
 
   elements.playersGrid.innerHTML = players.map(p => `
-    <div class="party-card p-3 flex items-center gap-3 bg-white/5 border border-white/15">
-      <div class="text-2xl">${p.avatar}</div>
+    <div class="party-card p-3 flex items-center gap-3 bg-white/10 border border-white/20 pop-bounce transform hover:scale-105 transition shadow-lg">
+      <div class="text-3xl">${p.avatar}</div>
       <div class="truncate">
         <div class="font-bold text-sm text-white truncate">${p.name}</div>
-        <div class="text-[10px] uppercase font-bold ${p.isBot ? 'text-purple-400' : 'text-emerald-400'}">
-          ${p.isBot ? 'AI BOT' : 'PHONE JOIN'}
+        <div class="text-[10px] uppercase font-black tracking-wider ${p.isBot ? 'text-purple-300' : 'text-emerald-300'}">
+          ${p.isBot ? '🤖 AI BOT' : '📱 PHONE JOIN'}
         </div>
       </div>
     </div>

@@ -22,45 +22,52 @@
     }
   </style>
 </head>
-<body class="flex flex-col justify-between p-4 bg-[#0c071e]">
+<body class="flex flex-col justify-between p-3 sm:p-4 bg-[#0c071e] relative">
+
+  <!-- Ambient Floating Colorful Party Bubbles -->
+  <div class="ambient-bubbles">
+    <div class="ambient-bubble bubble-1"></div>
+    <div class="ambient-bubble bubble-2"></div>
+    <div class="ambient-bubble bubble-3"></div>
+  </div>
 
   <!-- TOP CONTROLLER BAR -->
-  <header class="party-card px-4 py-2.5 flex items-center justify-between mb-3 shrink-0">
+  <header class="party-card px-4 py-2.5 flex items-center justify-between mb-3 shrink-0 z-10 shadow-lg border-white/20">
     <div class="flex items-center gap-2">
-      <span class="text-xl">⚡</span>
+      <span class="text-xl animate-pulse">⚡</span>
       <span class="font-display font-extrabold text-sm text-yellow-300">TRIVIA DUEL</span>
     </div>
 
     <!-- Active Player Pill -->
     <div id="playerPill" class="hidden flex items-center gap-2 bg-black/40 px-3 py-1 rounded-full border border-white/10 text-xs font-bold">
       <span id="playerAvatarPill">😎</span>
-      <span id="playerNamePill" class="truncate max-w-[100px]">Player</span>
+      <span id="playerNamePill" class="truncate max-w-[90px]">Player</span>
       <span id="playerScorePill" class="text-yellow-300 ml-1">0 pts</span>
     </div>
 
     <div class="flex items-center gap-2">
       <span class="text-[10px] font-mono text-gray-400 uppercase tracking-widest" id="ctrlRoomLabel">ROOM: ----</span>
-      <button id="ctrlSoundBtn" class="text-xs p-1">🔊</button>
+      <button id="ctrlSoundBtn" class="text-xs p-1" title="Toggle sound">🔊</button>
     </div>
   </header>
 
   <!-- CONTROLLER BODY STAGES -->
-  <main class="flex-1 flex flex-col justify-center relative overflow-y-auto">
+  <main class="flex-1 flex flex-col justify-center relative overflow-y-auto z-10">
     
     <!-- ================= STAGE 1: JOIN / AVATAR PICKER ================= -->
-    <div id="ctrlStageJoin" class="party-card p-6 flex flex-col justify-between max-w-md mx-auto w-full">
+    <div id="ctrlStageJoin" class="party-card p-6 flex flex-col justify-between max-w-md mx-auto w-full pop-bounce">
       <div>
         <div class="text-center mb-4">
-          <span class="text-4xl animate-bounce inline-block mb-1">🎮</span>
-          <h2 class="text-2xl font-black text-white">Join Party Game</h2>
-          <p class="text-xs text-gray-300">Enter room code and pick your party avatar</p>
+          <span class="text-5xl inline-block mb-1 animate-bounce">🎮</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-white">Join Party Game</h2>
+          <p class="text-xs text-gray-300 mt-1">Enter your room code and pick your party avatar</p>
         </div>
 
         <div class="space-y-3 mb-4">
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">4-Digit Room Code</label>
             <input id="inputRoomCode" type="text" maxlength="4" placeholder="e.g. DUEL"
-              class="w-full text-center font-display font-black text-2xl uppercase tracking-widest px-4 py-2.5 rounded-xl bg-black/50 border border-white/20 text-yellow-300 focus:outline-none focus:border-yellow-400">
+              class="w-full text-center font-display font-black text-3xl uppercase tracking-widest px-4 py-2.5 rounded-2xl bg-black/50 border-2 border-white/20 text-yellow-300 focus:outline-none focus:border-yellow-400 shadow-inner">
           </div>
 
           <div>
@@ -72,18 +79,18 @@
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 text-center">Pick Avatar</label>
             <div id="avatarPickerGrid" class="grid grid-cols-6 gap-2 text-2xl bg-black/30 p-2.5 rounded-xl border border-white/10">
-              <button class="avatar-opt p-1 rounded-lg border-2 border-yellow-400 bg-white/10" data-avatar="😎">😎</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🦄">🦄</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🥑">🥑</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🤖">🤖</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🍕">🍕</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🚀">🚀</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🦊">🦊</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="👑">👑</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="👾">👾</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🌮">🌮</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="🔥">🔥</button>
-              <button class="avatar-opt p-1 rounded-lg border-2 border-transparent hover:border-white/40" data-avatar="👻">👻</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-yellow-400 bg-white/15 transition transform active:scale-90" data-avatar="😎">😎</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🦄">🦄</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🥑">🥑</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🤖">🤖</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🍕">🍕</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🚀">🚀</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🦊">🦊</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="👑">👑</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="👾">👾</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🌮">🌮</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="🔥">🔥</button>
+              <button class="avatar-opt p-1.5 rounded-xl border-2 border-transparent hover:border-white/40 transition transform active:scale-90" data-avatar="👻">👻</button>
             </div>
           </div>
         </div>
@@ -91,80 +98,108 @@
         <div id="joinErrorMsg" class="hidden text-xs text-red-400 text-center font-bold mb-3"></div>
       </div>
 
-      <button id="btnJoinGame" class="w-full btn-arcade btn-green text-base py-3">
+      <button id="btnJoinGame" class="w-full btn-arcade btn-green text-base py-3.5 shadow-xl">
         JOIN ROOM 🚀
       </button>
     </div>
 
     <!-- ================= STAGE 2: LOBBY / WAITING SCREEN ================= -->
-    <div id="ctrlStageLobby" class="party-card p-6 hidden flex-col items-center justify-between text-center max-w-md mx-auto w-full h-full">
+    <div id="ctrlStageLobby" class="party-card p-6 hidden flex-col items-center justify-between text-center max-w-md mx-auto w-full h-full pop-bounce">
       <div>
-        <div class="w-20 h-20 rounded-3xl bg-white/10 border-2 border-yellow-400 flex items-center justify-center text-4xl mx-auto mb-3 shadow-xl">
+        <div class="w-24 h-24 rounded-3xl bg-white/10 border-4 border-yellow-400 flex items-center justify-center text-5xl mx-auto mb-3 shadow-2xl transform hover:scale-105 transition">
           <span id="lobbyPlayerAvatar">😎</span>
         </div>
-        <h3 id="lobbyPlayerName" class="text-2xl font-black text-white mb-1">Contestant</h3>
-        <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase inline-block mb-4">
+        <h3 id="lobbyPlayerName" class="text-2xl sm:text-3xl font-black text-white mb-1">Contestant</h3>
+        <span class="px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase inline-block mb-4 shadow">
           ✓ Connected to Room <span id="lobbyRoomBadge">----</span>
         </span>
 
-        <p class="text-sm text-gray-300 mb-6">
+        <p class="text-sm text-gray-300 mb-6 leading-relaxed">
           Look up at the TV / Host screen! The game will begin shortly.
         </p>
       </div>
 
       <!-- Live Emoji Reaction Bar (Interacts with TV screen) -->
       <div class="w-full pt-4 border-t border-white/10">
-        <div class="text-[11px] font-bold uppercase text-gray-400 mb-2">Send Reactions to TV:</div>
+        <div class="text-[11px] font-bold uppercase text-gray-400 mb-2">Send Joyful Reactions to TV:</div>
         <div class="flex items-center justify-center gap-2">
-          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="🎉">🎉</button>
-          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="🔥">🔥</button>
-          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="💀">💀</button>
-          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="😱">😱</button>
-          <button class="btn-reaction text-2xl p-2 rounded-xl bg-white/10 active:scale-90 transition" data-emoji="🚀">🚀</button>
+          <button class="btn-reaction text-2xl p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-75 transition transform" data-emoji="🎉">🎉</button>
+          <button class="btn-reaction text-2xl p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-75 transition transform" data-emoji="🔥">🔥</button>
+          <button class="btn-reaction text-2xl p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-75 transition transform" data-emoji="💀">💀</button>
+          <button class="btn-reaction text-2xl p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-75 transition transform" data-emoji="😱">😱</button>
+          <button class="btn-reaction text-2xl p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-75 transition transform" data-emoji="🚀">🚀</button>
         </div>
       </div>
     </div>
 
-    <!-- ================= STAGE 3: SPEED TRIVIA BUTTONS ================= -->
-    <div id="ctrlStageSpeed" class="hidden flex-col justify-between w-full h-full">
+    <!-- ================= STAGE 3: SPEED TRIVIA BUTTONS (FULL QUESTION & ANSWERS ON PHONE) ================= -->
+    <div id="ctrlStageSpeed" class="hidden flex-col justify-between w-full h-full max-w-md mx-auto pop-bounce">
       
-      <!-- Top question prompt reminder & answered lock banner -->
-      <div id="speedLockBanner" class="party-card px-4 py-2.5 mb-3 text-center transition">
-        <span class="text-xs font-bold text-gray-300 uppercase tracking-wider" id="speedStatusText">
-          TAP AN ANSWER QUICKLY!
+      <!-- Top Question Billboard Card -->
+      <div class="party-card p-4 mb-3 shimmer-card">
+        <!-- Round & Timer Row -->
+        <div class="flex items-center justify-between mb-2">
+          <span class="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold uppercase" id="ctrlRoundCounter">
+            Question 1 / 5
+          </span>
+          <div class="flex items-center gap-1.5 font-display font-black text-sm text-yellow-300" id="ctrlTimerBox">
+            <span>⏱️</span>
+            <span id="ctrlTimerSecText">15s</span>
+          </div>
+        </div>
+
+        <!-- Animated Progress Timer Bar -->
+        <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden mb-3">
+          <div id="ctrlTimerBar" class="h-full bg-emerald-400 rounded-full transition-all duration-1000 linear" style="width: 100%;"></div>
+        </div>
+
+        <!-- The Actual Question Text -->
+        <h3 id="ctrlQuestionText" class="text-base sm:text-lg font-black text-white text-center leading-snug drop-shadow min-h-[48px] flex items-center justify-center">
+          Loading Question...
+        </h3>
+      </div>
+
+      <!-- Status Banner -->
+      <div id="speedLockBanner" class="p-2.5 rounded-xl bg-purple-950/60 border border-purple-400/30 mb-3 text-center transition">
+        <span class="text-xs font-bold text-gray-200 uppercase tracking-wider" id="speedStatusText">
+          TAP YOUR ANSWER! ⏱️
         </span>
       </div>
 
-      <!-- 4 Huge Responsive Shape Buttons -->
-      <div class="grid grid-cols-2 gap-3 flex-1">
-        <!-- 0: Red Triangle -->
-        <button class="shape-pad pad-red text-center" data-choice="0">
-          <div class="text-4xl md:text-5xl mb-2 font-black">▲</div>
-          <span class="text-sm md:text-base font-bold">RED</span>
+      <!-- 4 Rich Interactive Option Cards (Full text + Shape badge) -->
+      <div class="space-y-2.5 flex-1 flex flex-col justify-center">
+        <!-- Option 0: Red Triangle -->
+        <button class="ctrl-option-card card-red" data-choice="0">
+          <div class="shape-badge badge-red">▲</div>
+          <span id="ctrlOptText0" class="text-sm sm:text-base font-bold text-white flex-1 leading-snug">Option 1</span>
+          <div class="w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center shrink-0 check-indicator"></div>
         </button>
 
-        <!-- 1: Blue Diamond -->
-        <button class="shape-pad pad-blue text-center" data-choice="1">
-          <div class="text-4xl md:text-5xl mb-2 font-black">◆</div>
-          <span class="text-sm md:text-base font-bold">BLUE</span>
+        <!-- Option 1: Blue Diamond -->
+        <button class="ctrl-option-card card-blue" data-choice="1">
+          <div class="shape-badge badge-blue">◆</div>
+          <span id="ctrlOptText1" class="text-sm sm:text-base font-bold text-white flex-1 leading-snug">Option 2</span>
+          <div class="w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center shrink-0 check-indicator"></div>
         </button>
 
-        <!-- 2: Yellow Circle -->
-        <button class="shape-pad pad-yellow text-center" data-choice="2">
-          <div class="text-4xl md:text-5xl mb-2 font-black text-amber-950">●</div>
-          <span class="text-sm md:text-base font-bold text-amber-950">YELLOW</span>
+        <!-- Option 2: Yellow Circle -->
+        <button class="ctrl-option-card card-yellow" data-choice="2">
+          <div class="shape-badge badge-yellow">●</div>
+          <span id="ctrlOptText2" class="text-sm sm:text-base font-bold text-white flex-1 leading-snug">Option 3</span>
+          <div class="w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center shrink-0 check-indicator"></div>
         </button>
 
-        <!-- 3: Green Square -->
-        <button class="shape-pad pad-green text-center" data-choice="3">
-          <div class="text-4xl md:text-5xl mb-2 font-black">■</div>
-          <span class="text-sm md:text-base font-bold">GREEN</span>
+        <!-- Option 3: Green Square -->
+        <button class="ctrl-option-card card-green" data-choice="3">
+          <div class="shape-badge badge-green">■</div>
+          <span id="ctrlOptText3" class="text-sm sm:text-base font-bold text-white flex-1 leading-snug">Option 4</span>
+          <div class="w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center shrink-0 check-indicator"></div>
         </button>
       </div>
     </div>
 
     <!-- ================= STAGE 4: THE SPECTRUM CONTROLLER ================= -->
-    <div id="ctrlStageSpectrum" class="party-card p-5 hidden flex-col justify-between max-w-md mx-auto w-full h-full">
+    <div id="ctrlStageSpectrum" class="party-card p-5 hidden flex-col justify-between max-w-md mx-auto w-full h-full pop-bounce">
       
       <!-- Branch A: Psychic View (typing clue) -->
       <div id="spectrumPsychicView" class="hidden flex-col justify-between h-full">
@@ -234,7 +269,7 @@
     </div>
 
     <!-- ================= STAGE 5: MAJORITY RULES CONTROLLER ================= -->
-    <div id="ctrlStageMajority" class="party-card p-5 hidden flex-col justify-between max-w-md mx-auto w-full h-full">
+    <div id="ctrlStageMajority" class="party-card p-5 hidden flex-col justify-between max-w-md mx-auto w-full h-full pop-bounce">
       
       <!-- Step 1: Writing Phase -->
       <div id="majorityInputView" class="flex flex-col justify-between h-full">
@@ -279,14 +314,28 @@
       </div>
     </div>
 
-    <!-- ================= STAGE 6: RESULT FEEDBACK OVERLAY ================= -->
-    <div id="ctrlStageResult" class="party-card p-6 hidden flex-col items-center justify-center text-center max-w-md mx-auto w-full h-full">
-      <div id="ctrlResultIcon" class="text-6xl mb-3">🎉</div>
-      <h3 id="ctrlResultTitle" class="text-2xl font-black text-white mb-2">CORRECT!</h3>
-      <p id="ctrlResultSubtitle" class="text-sm text-yellow-300 font-bold mb-6">+1,150 Points Earned</p>
-      
-      <div class="px-4 py-2 rounded-xl bg-white/10 text-xs font-bold text-gray-300">
-        Look up at the TV for current standings!
+    <!-- ================= STAGE 6: RESULT FEEDBACK OVERLAY (DETAILED WITH EXPLANATION) ================= -->
+    <div id="ctrlStageResult" class="party-card p-6 hidden flex-col items-center justify-between text-center max-w-md mx-auto w-full h-full pop-bounce">
+      <div>
+        <div id="ctrlResultIcon" class="text-6xl mb-2 animate-bounce">🎉</div>
+        <h3 id="ctrlResultTitle" class="text-3xl font-black text-white mb-1">CORRECT!</h3>
+        <p id="ctrlResultSubtitle" class="text-base text-yellow-300 font-bold mb-4">+1,150 Points Earned</p>
+
+        <!-- Correct Answer Recap Card -->
+        <div class="p-3.5 rounded-2xl bg-white/10 border border-white/15 text-left mb-4 shadow">
+          <div class="text-[10px] uppercase font-bold text-emerald-400 mb-1">Correct Answer:</div>
+          <div id="ctrlResultCorrectText" class="text-base font-black text-white mb-2">
+            Correct answer option
+          </div>
+          <div class="text-[10px] uppercase font-bold text-yellow-300 mb-0.5">Fun Fact:</div>
+          <div id="ctrlResultFunFactText" class="text-xs text-gray-300 leading-relaxed">
+            Trivia explanation detail will appear here.
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full px-4 py-2 rounded-xl bg-black/40 border border-white/10 text-xs font-bold text-gray-300">
+        Look up at the TV for leaderboard standings! 🏆
       </div>
     </div>
 
@@ -298,4 +347,3 @@
   <script src="/js/controller.js"></script>
 </body>
 </html>
-

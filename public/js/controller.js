@@ -11,6 +11,7 @@ let playerProfile = {
 let isPsychic = false;
 let currentSliderValue = 50;
 let questionStartTime = Date.now();
+let phoneTimerInterval = null;
 
 // DOM elements cache
 const ctrlElements = {
@@ -43,10 +44,19 @@ const ctrlElements = {
   lobbyRoomBadge: document.getElementById('lobbyRoomBadge'),
   btnReactions: document.querySelectorAll('.btn-reaction'),
 
-  // Speed stage
+  // Speed stage (Full Question & Answers on Phone!)
   speedLockBanner: document.getElementById('speedLockBanner'),
   speedStatusText: document.getElementById('speedStatusText'),
-  shapePads: document.querySelectorAll('.shape-pad'),
+  ctrlRoundCounter: document.getElementById('ctrlRoundCounter'),
+  ctrlTimerBox: document.getElementById('ctrlTimerBox'),
+  ctrlTimerSecText: document.getElementById('ctrlTimerSecText'),
+  ctrlTimerBar: document.getElementById('ctrlTimerBar'),
+  ctrlQuestionText: document.getElementById('ctrlQuestionText'),
+  ctrlOptionCards: document.querySelectorAll('.ctrl-option-card'),
+  ctrlOptText0: document.getElementById('ctrlOptText0'),
+  ctrlOptText1: document.getElementById('ctrlOptText1'),
+  ctrlOptText2: document.getElementById('ctrlOptText2'),
+  ctrlOptText3: document.getElementById('ctrlOptText3'),
 
   // Spectrum stage
   spectrumPsychicView: document.getElementById('spectrumPsychicView'),
@@ -74,7 +84,9 @@ const ctrlElements = {
   // Result overlay stage
   ctrlResultIcon: document.getElementById('ctrlResultIcon'),
   ctrlResultTitle: document.getElementById('ctrlResultTitle'),
-  ctrlResultSubtitle: document.getElementById('ctrlResultSubtitle')
+  ctrlResultSubtitle: document.getElementById('ctrlResultSubtitle'),
+  ctrlResultCorrectText: document.getElementById('ctrlResultCorrectText'),
+  ctrlResultFunFactText: document.getElementById('ctrlResultFunFactText')
 };
 
 // ================= INITIALIZATION =================
@@ -115,6 +127,37 @@ function switchCtrlStage(stageEl) {
   });
 }
 
+// Synchronized Phone Countdown Timer Bar
+function startPhoneCountdown(seconds) {
+  clearInterval(phoneTimerInterval);
+  let remaining = seconds;
+  if (ctrlElements.ctrlTimerSecText) ctrlElements.ctrlTimerSecText.textContent = `${remaining}s`;
+  if (ctrlElements.ctrlTimerBar) {
+    ctrlElements.ctrlTimerBar.style.width = '100%';
+    ctrlElements.ctrlTimerBar.className = 'h-full bg-emerald-400 rounded-full transition-all duration-1000 linear';
+  }
+  if (ctrlElements.ctrlTimerBox) ctrlElements.ctrlTimerBox.classList.remove('timer-urgent');
+
+  phoneTimerInterval = setInterval(() => {
+    remaining--;
+    if (remaining < 0) {
+      clearInterval(phoneTimerInterval);
+      return;
+    }
+    if (ctrlElements.ctrlTimerSecText) ctrlElements.ctrlTimerSecText.textContent = `${remaining}s`;
+    if (ctrlElements.ctrlTimerBar) {
+      const pct = Math.max(0, (remaining / seconds) * 100);
+      ctrlElements.ctrlTimerBar.style.width = `${pct}%`;
+      if (remaining <= 5) {
+        ctrlElements.ctrlTimerBar.className = 'h-full bg-red-500 rounded-full transition-all duration-1000 linear';
+        if (ctrlElements.ctrlTimerBox) ctrlElements.ctrlTimerBox.classList.add('timer-urgent');
+      } else if (remaining <= 9) {
+        ctrlElements.ctrlTimerBar.className = 'h-full bg-yellow-400 rounded-full transition-all duration-1000 linear';
+      }
+    }
+  }, 1000);
+}
+
 // ================= SOCKET EVENT HANDLERS =================
 socket.on('player:joined_success', (data) => {
   currentRoom = data.roomCode;
@@ -142,36 +185,70 @@ socket.on('player:error', ({ message }) => {
   window.sound.playWrong();
 });
 
-// Speed Trivia Question Start
-socket.on('round:speed_start', () => {
+// Speed Trivia Question Start (Question + Options loaded directly on phone!)
+socket.on('round:speed_start', (data) => {
   switchCtrlStage(ctrlElements.ctrlStageSpeed);
   window.sound.playWhoosh();
   questionStartTime = Date.now();
 
-  // Reset shape pads
-  ctrlElements.shapePads.forEach(pad => {
-    pad.classList.remove('selected', 'disabled');
-    pad.disabled = false;
+  // Populate round, question, and full option texts
+  if (data) {
+    if (ctrlElements.ctrlRoundCounter) {
+      ctrlElements.ctrlRoundCounter.textContent = `Question ${data.roundIndex} / ${data.totalRounds || 5}`;
+    }
+    if (ctrlElements.ctrlQuestionText) {
+      ctrlElements.ctrlQuestionText.textContent = data.question || 'Answer the question:';
+    }
+    if (data.options && data.options.length >= 4) {
+      if (ctrlElements.ctrlOptText0) ctrlElements.ctrlOptText0.textContent = data.options[0];
+      if (ctrlElements.ctrlOptText1) ctrlElements.ctrlOptText1.textContent = data.options[1];
+      if (ctrlElements.ctrlOptText2) ctrlElements.ctrlOptText2.textContent = data.options[2];
+      if (ctrlElements.ctrlOptText3) ctrlElements.ctrlOptText3.textContent = data.options[3];
+    }
+    startPhoneCountdown(data.timeLimitSeconds || 15);
+  }
+
+  // Reset option cards
+  ctrlElements.ctrlOptionCards.forEach(card => {
+    card.classList.remove('selected', 'dimmed');
+    card.disabled = false;
+    const check = card.querySelector('.check-indicator');
+    if (check) {
+      check.innerHTML = '';
+      check.className = 'w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center shrink-0 check-indicator';
+    }
   });
+
   ctrlElements.speedLockBanner.classList.remove('bg-emerald-600/40', 'border-emerald-400');
-  ctrlElements.speedStatusText.textContent = 'TAP AN ANSWER QUICKLY!';
+  ctrlElements.speedStatusText.textContent = 'TAP YOUR ANSWER! ⏱️';
 });
 
-// Speed Trivia Results
+// Speed Trivia Results (Detailed with correct answer & lore on phone!)
 socket.on('round:speed_result', (data) => {
+  clearInterval(phoneTimerInterval);
   const myResult = data.roundResults.find(r => r.id === socket.id);
   switchCtrlStage(ctrlElements.ctrlStageResult);
+
+  const correctText = data.correctText || (data.options ? data.options[data.correctIndex] : 'Correct answer');
+  if (ctrlElements.ctrlResultCorrectText) {
+    ctrlElements.ctrlResultCorrectText.textContent = correctText;
+  }
+  if (ctrlElements.ctrlResultFunFactText) {
+    ctrlElements.ctrlResultFunFactText.textContent = data.funFact || 'Great round!';
+  }
 
   if (myResult && myResult.isCorrect) {
     ctrlElements.ctrlResultIcon.textContent = '🎉';
     ctrlElements.ctrlResultTitle.textContent = 'CORRECT!';
-    ctrlElements.ctrlResultSubtitle.textContent = `+${myResult.pointsEarned.toLocaleString()} Points! (${myResult.streak > 1 ? `🔥 x${myResult.streak} Streak` : 'Nice!'})`;
+    ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-green-400 mb-1';
+    ctrlElements.ctrlResultSubtitle.textContent = `+${myResult.pointsEarned.toLocaleString()} Points! (${myResult.streak > 1 ? `🔥 x${myResult.streak} Streak!` : 'Nice!'})`;
     ctrlElements.playerScorePill.textContent = `${myResult.newTotalScore.toLocaleString()} pts`;
     window.sound.playCorrect();
-    confetti({ particleCount: 50, spread: 60 });
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
   } else {
     ctrlElements.ctrlResultIcon.textContent = '💀';
     ctrlElements.ctrlResultTitle.textContent = 'OOF! WRONG';
+    ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-red-400 mb-1';
     ctrlElements.ctrlResultSubtitle.textContent = 'Streak reset to 0';
     window.sound.playWrong();
   }
@@ -215,8 +292,16 @@ socket.on('spectrum:reveal', (data) => {
   switchCtrlStage(ctrlElements.ctrlStageResult);
   ctrlElements.ctrlResultIcon.textContent = data.points >= 3 ? '🎯' : '👍';
   ctrlElements.ctrlResultTitle.textContent = data.zone;
+  ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-yellow-300 mb-1';
   ctrlElements.ctrlResultSubtitle.textContent = `+${data.points * 250} Team Points! (${data.diff}% from center)`;
   
+  if (ctrlElements.ctrlResultCorrectText) {
+    ctrlElements.ctrlResultCorrectText.textContent = `Target: ${data.target}% (Your guess: ${data.finalGuess}%)`;
+  }
+  if (ctrlElements.ctrlResultFunFactText) {
+    ctrlElements.ctrlResultFunFactText.textContent = 'Cooperative intuition round complete!';
+  }
+
   const myPlayer = data.leaderboard.find(p => p.id === socket.id);
   if (myPlayer) {
     ctrlElements.playerScorePill.textContent = `${myPlayer.score.toLocaleString()} pts`;
@@ -248,9 +333,9 @@ socket.on('majority:voting_phase', (data) => {
 
   // Render clickable voting cards
   ctrlElements.ctrlMajorityVoteCards.innerHTML = data.cards.map((card, idx) => `
-    <button class="vote-answer-card w-full text-left p-3.5 rounded-xl bg-white/10 border border-white/20 hover:border-yellow-400 active:scale-98 transition flex items-center justify-between" data-target-id="${card.id}">
-      <span class="font-bold text-white text-sm">"${card.text}"</span>
-      <span class="text-xs text-yellow-300 font-bold ml-2">Vote 🗳️</span>
+    <button class="vote-answer-card w-full text-left p-4 rounded-2xl bg-white/10 border-2 border-white/20 hover:border-yellow-400 active:scale-98 transition flex items-center justify-between" data-target-id="${card.id}">
+      <span class="font-bold text-white text-sm sm:text-base">"${card.text}"</span>
+      <span class="text-xs text-yellow-300 font-bold ml-2 shrink-0">Vote 🗳️</span>
     </button>
   `).join('');
 
@@ -279,12 +364,21 @@ socket.on('majority:reveal_results', (data) => {
   if (myCard && myCard.isMajorityWinner) {
     ctrlElements.ctrlResultIcon.textContent = '👑';
     ctrlElements.ctrlResultTitle.textContent = 'MAJORITY WINNER!';
+    ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-yellow-300 mb-1';
     ctrlElements.ctrlResultSubtitle.textContent = `Your answer won with ${myCard.votes} votes!`;
     confetti({ particleCount: 70, spread: 70 });
   } else {
     ctrlElements.ctrlResultIcon.textContent = '🗳️';
     ctrlElements.ctrlResultTitle.textContent = 'VOTES TALLIED';
+    ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-cyan-300 mb-1';
     ctrlElements.ctrlResultSubtitle.textContent = myCard ? `Your answer got ${myCard.votes} votes!` : 'Round finished!';
+  }
+
+  if (ctrlElements.ctrlResultCorrectText) {
+    ctrlElements.ctrlResultCorrectText.textContent = data.cards[0] ? `Top Answer: "${data.cards[0].text}" (${data.cards[0].votes} votes)` : 'Consensus complete';
+  }
+  if (ctrlElements.ctrlResultFunFactText) {
+    ctrlElements.ctrlResultFunFactText.textContent = 'Points awarded for majority consensus!';
   }
 
   if (myPlayer) {
@@ -298,6 +392,7 @@ socket.on('game:podium', (data) => {
   const myRank = data.leaderboard.findIndex(p => p.id === socket.id) + 1;
   ctrlElements.ctrlResultIcon.textContent = myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : '🥉';
   ctrlElements.ctrlResultTitle.textContent = myRank === 1 ? 'YOU WON THE GAME!' : `Finished #${myRank}!`;
+  ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-yellow-300 mb-1';
   ctrlElements.ctrlResultSubtitle.textContent = 'Great game! Look at the podium on TV!';
   window.sound.playFanfare();
 });
@@ -312,10 +407,10 @@ function setupControllerListeners() {
   ctrlElements.avatarOpts.forEach(btn => {
     btn.addEventListener('click', () => {
       ctrlElements.avatarOpts.forEach(b => {
-        b.classList.remove('border-yellow-400', 'bg-white/10');
+        b.classList.remove('border-yellow-400', 'bg-white/15');
         b.classList.add('border-transparent');
       });
-      btn.classList.add('border-yellow-400', 'bg-white/10');
+      btn.classList.add('border-yellow-400', 'bg-white/15');
       btn.classList.remove('border-transparent');
       playerProfile.avatar = btn.getAttribute('data-avatar');
       window.sound.playPop();
@@ -353,26 +448,31 @@ function setupControllerListeners() {
     });
   });
 
-  // Speed Trivia Shape Tap
-  ctrlElements.shapePads.forEach(pad => {
-    pad.addEventListener('click', () => {
-      if (pad.disabled) return;
-      const choice = parseInt(pad.getAttribute('data-choice'), 10);
+  // Speed Trivia Option Action Card Click
+  ctrlElements.ctrlOptionCards.forEach(card => {
+    card.addEventListener('click', () => {
+      if (card.disabled) return;
+      const choice = parseInt(card.getAttribute('data-choice'), 10);
       const elapsed = Date.now() - questionStartTime;
       const timeRemainingMs = Math.max(100, 15000 - elapsed);
 
-      // Lock buttons
-      ctrlElements.shapePads.forEach(p => {
-        p.disabled = true;
-        if (p === pad) {
-          p.classList.add('selected');
+      // Lock buttons visually and tactilely
+      ctrlElements.ctrlOptionCards.forEach(c => {
+        c.disabled = true;
+        if (c === card) {
+          c.classList.add('selected');
+          const check = c.querySelector('.check-indicator');
+          if (check) {
+            check.className = 'w-6 h-6 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shrink-0 check-indicator';
+            check.innerHTML = '<span class="text-xs font-black text-white">✓</span>';
+          }
         } else {
-          p.classList.add('disabled');
+          c.classList.add('dimmed');
         }
       });
 
       ctrlElements.speedLockBanner.classList.add('bg-emerald-600/40', 'border-emerald-400');
-      ctrlElements.speedStatusText.textContent = '🔒 ANSWER LOCKED IN! WAITING FOR TV...';
+      ctrlElements.speedStatusText.textContent = '🔒 ANSWER LOCKED IN! WAITING FOR REVEAL...';
 
       window.sound.playLockIn();
       socket.emit('player:submit_speed_answer', {
@@ -476,4 +576,3 @@ function setupSpectrumSlider() {
     isDragging = false;
   });
 }
-
