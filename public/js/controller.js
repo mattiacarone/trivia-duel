@@ -85,9 +85,19 @@ const ctrlElements = {
   ctrlResultIcon: document.getElementById('ctrlResultIcon'),
   ctrlResultTitle: document.getElementById('ctrlResultTitle'),
   ctrlResultSubtitle: document.getElementById('ctrlResultSubtitle'),
+  ctrlResultQuestionRecap: document.getElementById('ctrlResultQuestionRecap'),
   ctrlResultCorrectText: document.getElementById('ctrlResultCorrectText'),
   ctrlResultFunFactText: document.getElementById('ctrlResultFunFactText')
 };
+
+// Mobile Tactile Haptic Feedback Engine
+function triggerHaptic(pattern = [25]) {
+  try {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(pattern);
+    }
+  } catch (_) {}
+}
 
 // ================= INITIALIZATION =================
 window.addEventListener('DOMContentLoaded', () => {
@@ -229,6 +239,16 @@ socket.on('round:speed_result', (data) => {
   const myResult = data.roundResults.find(r => r.id === socket.id);
   switchCtrlStage(ctrlElements.ctrlStageResult);
 
+  if (ctrlElements.ctrlResultQuestionRecap) {
+    const qText = ctrlElements.ctrlQuestionText ? ctrlElements.ctrlQuestionText.textContent : (data.question || '');
+    if (qText) {
+      ctrlElements.ctrlResultQuestionRecap.textContent = `Q: "${qText}"`;
+      ctrlElements.ctrlResultQuestionRecap.classList.remove('hidden');
+    } else {
+      ctrlElements.ctrlResultQuestionRecap.classList.add('hidden');
+    }
+  }
+
   const correctText = data.correctText || (data.options ? data.options[data.correctIndex] : 'Correct answer');
   if (ctrlElements.ctrlResultCorrectText) {
     ctrlElements.ctrlResultCorrectText.textContent = correctText;
@@ -244,6 +264,7 @@ socket.on('round:speed_result', (data) => {
     ctrlElements.ctrlResultSubtitle.textContent = `+${myResult.pointsEarned.toLocaleString()} Points! (${myResult.streak > 1 ? `🔥 x${myResult.streak} Streak!` : 'Nice!'})`;
     ctrlElements.playerScorePill.textContent = `${myResult.newTotalScore.toLocaleString()} pts`;
     window.sound.playCorrect();
+    triggerHaptic([40, 60, 80]);
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
   } else {
     ctrlElements.ctrlResultIcon.textContent = '💀';
@@ -251,6 +272,7 @@ socket.on('round:speed_result', (data) => {
     ctrlElements.ctrlResultTitle.className = 'text-3xl font-black text-red-400 mb-1';
     ctrlElements.ctrlResultSubtitle.textContent = 'Streak reset to 0';
     window.sound.playWrong();
+    triggerHaptic([100]);
   }
 });
 
@@ -351,6 +373,7 @@ socket.on('majority:voting_phase', (data) => {
       btn.classList.remove('opacity-50');
       btn.classList.add('border-yellow-400', 'bg-yellow-950/40');
       btn.innerHTML += ` <span class="text-xs font-bold text-emerald-400">✓ Voted</span>`;
+      triggerHaptic([30]);
       window.sound.playLockIn();
     });
   });
@@ -413,6 +436,7 @@ function setupControllerListeners() {
       btn.classList.add('border-yellow-400', 'bg-white/15');
       btn.classList.remove('border-transparent');
       playerProfile.avatar = btn.getAttribute('data-avatar');
+      triggerHaptic([20]);
       window.sound.playPop();
     });
   });
@@ -424,10 +448,12 @@ function setupControllerListeners() {
     if (!code || code.length < 3) {
       ctrlElements.joinErrorMsg.textContent = 'Please enter a valid room code!';
       ctrlElements.joinErrorMsg.classList.remove('hidden');
+      triggerHaptic([60, 40, 60]);
       return;
     }
 
     ctrlElements.joinErrorMsg.classList.add('hidden');
+    triggerHaptic([30]);
     socket.emit('player:join_room', {
       roomCode: code,
       name,
@@ -444,6 +470,7 @@ function setupControllerListeners() {
         emoji,
         playerName: playerProfile.name
       });
+      triggerHaptic([25]);
       window.sound.playPop();
     });
   });
@@ -474,6 +501,7 @@ function setupControllerListeners() {
       ctrlElements.speedLockBanner.classList.add('bg-emerald-600/40', 'border-emerald-400');
       ctrlElements.speedStatusText.textContent = '🔒 ANSWER LOCKED IN! WAITING FOR REVEAL...';
 
+      triggerHaptic([35]);
       window.sound.playLockIn();
       socket.emit('player:submit_speed_answer', {
         roomCode: currentRoom,
@@ -487,6 +515,7 @@ function setupControllerListeners() {
   ctrlElements.btnSubmitClue.addEventListener('click', () => {
     const clue = ctrlElements.ctrlPsychicClueInput.value.trim();
     if (!clue) return;
+    triggerHaptic([30]);
     socket.emit('player:spectrum_submit_clue', {
       roomCode: currentRoom,
       clue
@@ -500,6 +529,7 @@ function setupControllerListeners() {
 
   // Lock Spectrum Guess
   ctrlElements.btnLockSpectrumGuess.addEventListener('click', () => {
+    triggerHaptic([40]);
     socket.emit('player:spectrum_lock_guess', {
       roomCode: currentRoom,
       finalGuess: currentSliderValue
@@ -513,6 +543,7 @@ function setupControllerListeners() {
   ctrlElements.btnSubmitMajorityText.addEventListener('click', () => {
     const text = ctrlElements.ctrlMajorityText.value.trim();
     if (!text) return;
+    triggerHaptic([30]);
     socket.emit('player:majority_submit', {
       roomCode: currentRoom,
       text
@@ -534,6 +565,7 @@ function setupSpectrumSlider() {
   const track = ctrlElements.ctrlSpectrumTrack;
   const dial = ctrlElements.ctrlSpectrumDial;
   let isDragging = false;
+  let lastDetent = 50;
 
   function updateSlider(clientX) {
     const rect = track.getBoundingClientRect();
@@ -544,12 +576,18 @@ function setupSpectrumSlider() {
     dial.style.left = `${percent}%`;
     ctrlElements.ctrlSliderValLabel.textContent = `Dial Position: ${percent}%`;
 
+    // Tactile detent feedback every 5%
+    if (Math.abs(percent - lastDetent) >= 5) {
+      lastDetent = percent;
+      triggerHaptic([12]);
+      window.sound.playDialTick();
+    }
+
     // Live sync to host board
     socket.emit('player:spectrum_slider_move', {
       roomCode: currentRoom,
       value: percent
     });
-    window.sound.playDialTick();
   }
 
   // Pointer events

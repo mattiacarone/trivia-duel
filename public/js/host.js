@@ -195,6 +195,14 @@ socket.on('round:speed_start', (data) => {
   switchStage('stageSpeedQuestion');
   window.sound.playWhoosh();
 
+  // Reset option card animations and states
+  for (let i = 0; i < 4; i++) {
+    const card = document.getElementById(`optCard${i}`);
+    if (card) {
+      card.classList.remove('winner-spotlight', 'dimmed-wrong');
+    }
+  }
+
   elements.speedRoundCounter.textContent = `Round ${data.roundIndex} / ${data.totalRounds}`;
   elements.speedPackName.textContent = data.packTitle;
   elements.speedQuestionText.textContent = data.question;
@@ -219,14 +227,36 @@ socket.on('round:speed_result', (data) => {
   clearInterval(currentTimerInterval);
   switchStage('stageSpeedResult');
 
+  // Spotlight winning option card and dim wrong ones
+  for (let i = 0; i < 4; i++) {
+    const card = document.getElementById(`optCard${i}`);
+    if (card) {
+      if (i === data.correctIndex) {
+        card.classList.add('winner-spotlight');
+        card.classList.remove('dimmed-wrong');
+      } else {
+        card.classList.add('dimmed-wrong');
+        card.classList.remove('winner-spotlight');
+      }
+    }
+  }
+
+  if (elements.resultQuestionTitle) {
+    elements.resultQuestionTitle.textContent = elements.speedQuestionText.textContent;
+  }
   elements.resultWinningText.textContent = elements[`optText${data.correctIndex}`].textContent;
   elements.resultFunFact.textContent = data.funFact;
 
-  // Answer Breakdown Chart
-  elements.countOpt0.textContent = data.optionCounts[0];
-  elements.countOpt1.textContent = data.optionCounts[1];
-  elements.countOpt2.textContent = data.optionCounts[2];
-  elements.countOpt3.textContent = data.optionCounts[3];
+  // Answer Breakdown Chart with percentage bars
+  const totalAnswers = (data.optionCounts || []).reduce((a, b) => a + b, 0) || 1;
+  for (let i = 0; i < 4; i++) {
+    const count = (data.optionCounts && data.optionCounts[i]) || 0;
+    const pct = Math.round((count / totalAnswers) * 100);
+    const countEl = elements[`countOpt${i}`];
+    if (countEl) {
+      countEl.innerHTML = `<span>${count}</span> <span class="text-xs font-normal text-gray-400">(${pct}%)</span>`;
+    }
+  }
 
   // Leaderboard render
   renderSpeedLeaderboard(data.leaderboard, data.roundResults);
