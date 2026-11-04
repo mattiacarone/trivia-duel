@@ -1,0 +1,29 @@
+project:
+  name: "Trivia Duel"
+  stage: "production"
+  engine: "node-express-socketio"
+  version: "2.0.0"
+
+modes:
+  rigor: "full"
+  automation: "guided"
+  workflow: "full"
+  qa_level: "full"
+  review_mode: "full"
+
+features:
+  modes:
+    - "speed_duel"
+    - "the_spectrum"
+    - "majority_rules"
+  monetization:
+    - "stripe_checkout"
+    - "pro_host_tier"
+    - "expansion_packs"
+    - "printable_kits"
+  gameplay:
+    - "lifelines_50_50"
+    - "double_down"
+    - "tie_breaker_sudden_death"
+    - "player_session_reconnect"
+    - "anti_xss_sanitization"

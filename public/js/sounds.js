@@ -263,6 +263,72 @@ class SoundEngine {
 
     noise.start(t);
   }
+
+  // Toggleable Synthesized Upbeat Background Party Groove (BGM)
+  toggleBGM() {
+    this.bgmPlaying = !this.bgmPlaying;
+    if (this.bgmPlaying) {
+      this.startBGM();
+    } else {
+      this.stopBGM();
+    }
+    return this.bgmPlaying;
+  }
+
+  startBGM() {
+    this.init();
+    if (!this.ctx || this.bgmTimer) return;
+    this.bgmStep = 0;
+    const bpm = 124;
+    const stepTime = (60 / bpm) / 4; // 16th notes
+
+    // Warm disco/synth-pop bassline (C -> Am -> F -> G)
+    const bassNotes = [
+      130.81, 0, 130.81, 0,  110.00, 0, 110.00, 0,  87.31, 0, 87.31, 0,  98.00, 0, 98.00, 0
+    ];
+
+    this.bgmTimer = setInterval(() => {
+      if (this.muted || !this.bgmPlaying) return;
+      const t = this.ctx.currentTime;
+      const note = bassNotes[this.bgmStep % bassNotes.length];
+
+      if (note > 0) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(note, t);
+        gain.gain.setValueAtTime(0.04, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.12);
+      }
+
+      // Soft disco hi-hat on offbeats
+      if (this.bgmStep % 2 === 1) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(5000, t);
+        gain.gain.setValueAtTime(0.012, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.025);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.025);
+      }
+
+      this.bgmStep++;
+    }, stepTime * 1000);
+  }
+
+  stopBGM() {
+    if (this.bgmTimer) {
+      clearInterval(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+  }
 }
 
 // Global singleton instance

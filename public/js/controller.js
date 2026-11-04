@@ -87,8 +87,27 @@ const ctrlElements = {
   ctrlResultSubtitle: document.getElementById('ctrlResultSubtitle'),
   ctrlResultQuestionRecap: document.getElementById('ctrlResultQuestionRecap'),
   ctrlResultCorrectText: document.getElementById('ctrlResultCorrectText'),
-  ctrlResultFunFactText: document.getElementById('ctrlResultFunFactText')
+  ctrlResultFunFactText: document.getElementById('ctrlResultFunFactText'),
+
+  // Lifelines & Toast
+  ctrlToast: document.getElementById('ctrlToast'),
+  btnLifeline5050: document.getElementById('btnLifeline5050'),
+  badge5050Count: document.getElementById('badge5050Count'),
+  btnLifelineDouble: document.getElementById('btnLifelineDouble'),
+  badgeDoubleCount: document.getElementById('badgeDoubleCount')
 };
+
+// Toast notification helper
+function showToast(msg, duration = 3000) {
+  if (!ctrlElements.ctrlToast) return;
+  ctrlElements.ctrlToast.textContent = msg;
+  ctrlElements.ctrlToast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+  ctrlElements.ctrlToast.classList.add('opacity-100', 'translate-y-0');
+  setTimeout(() => {
+    ctrlElements.ctrlToast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+    ctrlElements.ctrlToast.classList.remove('opacity-100', 'translate-y-0');
+  }, duration);
+}
 
 // Mobile Tactile Haptic Feedback Engine
 function triggerHaptic(pattern = [25]) {
@@ -101,15 +120,18 @@ function triggerHaptic(pattern = [25]) {
 
 // ================= INITIALIZATION =================
 window.addEventListener('DOMContentLoaded', () => {
-  // Pre-fill room code from URL ?room=XXXX
+  // Pre-fill room code from URL ?room=XXXX or last room
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
   if (roomParam) {
     ctrlElements.inputRoomCode.value = roomParam.toUpperCase().slice(0, 4);
+  } else {
+    const savedRoom = localStorage.getItem('trivia_last_room');
+    if (savedRoom) ctrlElements.inputRoomCode.value = savedRoom;
   }
 
   // Pre-fill random funny name
-  const funNames = ['QuizWhiz', 'BrainBox', 'PartyFox', 'PixelNinja', 'TurboTaco', 'LuckyStar'];
+  const funNames = ['QuizWhiz', 'BrainBox', 'PartyFox', 'PixelNinja', 'TurboTaco', 'LuckyStar', 'NeonViper'];
   ctrlElements.inputPlayerName.value = funNames[Math.floor(Math.random() * funNames.length)];
 
   setupControllerListeners();
@@ -173,6 +195,12 @@ socket.on('player:joined_success', (data) => {
   currentRoom = data.roomCode;
   playerProfile = data.player;
 
+  // Persist session token for seamless mobile reconnection
+  if (playerProfile.token) {
+    localStorage.setItem('trivia_player_token', playerProfile.token);
+    localStorage.setItem('trivia_last_room', currentRoom);
+  }
+
   // Update top bar pill
   ctrlElements.ctrlRoomLabel.textContent = `ROOM: ${currentRoom}`;
   ctrlElements.playerPill.classList.remove('hidden');
@@ -187,6 +215,51 @@ socket.on('player:joined_success', (data) => {
 
   switchCtrlStage(ctrlElements.ctrlStageLobby);
   window.sound.playCorrect();
+  showToast(`Joined Room ${currentRoom} as ${playerProfile.name}! 🎉`);
+});
+
+// Reconnection recovery event
+socket.on('player:reconnected_success', (data) => {
+  currentRoom = data.roomCode;
+  playerProfile = data.player;
+
+  ctrlElements.ctrlRoomLabel.textContent = `ROOM: ${currentRoom}`;
+  ctrlElements.playerPill.classList.remove('hidden');
+  ctrlElements.playerAvatarPill.textContent = playerProfile.avatar;
+  ctrlElements.playerNamePill.textContent = playerProfile.name;
+  ctrlElements.playerScorePill.textContent = `${playerProfile.score} pts`;
+
+  showToast(`⚡ Welcome back ${playerProfile.name}! Score restored.`);
+  window.sound.playLockIn();
+
+  if (data.state === 'QUESTION_ACTIVE' && data.currentQuestion) {
+    switchCtrlStage(ctrlElements.ctrlStageSpeed);
+    ctrlElements.ctrlRoundCounter.textContent = `Question ${data.currentQuestion.roundIndex} / ${data.currentQuestion.totalRounds}`;
+    ctrlElements.ctrlQuestionText.textContent = data.currentQuestion.question;
+    data.currentQuestion.options.forEach((opt, idx) => {
+      const el = ctrlElements[`ctrlOptText${idx}`];
+      if (el) el.textContent = opt;
+    });
+
+    if (data.currentQuestion.hasAnswered) {
+      ctrlElements.ctrlOptionCards.forEach(c => {
+        c.disabled = true;
+        const choice = parseInt(c.getAttribute('data-choice'), 10);
+        if (choice === data.currentQuestion.lastAnswerIndex) {
+          c.classList.add('selected');
+        } else {
+          c.classList.add('dimmed');
+        }
+      });
+      ctrlElements.speedLockBanner.classList.add('bg-emerald-600/40', 'border-emerald-400');
+      ctrlElements.speedStatusText.textContent = '🔒 ANSWER LOCKED IN! WAITING FOR REVEAL...';
+    }
+  } else {
+    ctrlElements.lobbyPlayerAvatar.textContent = playerProfile.avatar;
+    ctrlElements.lobbyPlayerName.textContent = playerProfile.name;
+    ctrlElements.lobbyRoomBadge.textContent = currentRoom;
+    switchCtrlStage(ctrlElements.ctrlStageLobby);
+  }
 });
 
 socket.on('player:error', ({ message }) => {
@@ -218,9 +291,26 @@ socket.on('round:speed_start', (data) => {
     startPhoneCountdown(data.timeLimitSeconds || 15);
   }
 
+  // Update lifeline button availability
+  if (ctrlElements.btnLifeline5050) {
+    const count5050 = playerProfile.lifelines?.fiftyFifty ?? 1;
+    ctrlElements.btnLifeline5050.disabled = count5050 <= 0;
+    if (count5050 <= 0) ctrlElements.btnLifeline5050.classList.add('opacity-40');
+    else ctrlElements.btnLifeline5050.classList.remove('opacity-40');
+    if (ctrlElements.badge5050Count) ctrlElements.badge5050Count.textContent = count5050;
+  }
+  if (ctrlElements.btnLifelineDouble) {
+    const countDouble = playerProfile.lifelines?.doubleDown ?? 1;
+    ctrlElements.btnLifelineDouble.disabled = countDouble <= 0;
+    if (countDouble <= 0) ctrlElements.btnLifelineDouble.classList.add('opacity-40');
+    else ctrlElements.btnLifelineDouble.classList.remove('opacity-40');
+    if (ctrlElements.badgeDoubleCount) ctrlElements.badgeDoubleCount.textContent = countDouble;
+  }
+
   // Reset option cards
   ctrlElements.ctrlOptionCards.forEach(card => {
-    card.classList.remove('selected', 'dimmed');
+    card.classList.remove('selected', 'dimmed', 'opacity-20');
+    card.style.transform = '';
     card.disabled = false;
     const check = card.querySelector('.check-indicator');
     if (check) {
@@ -229,8 +319,53 @@ socket.on('round:speed_start', (data) => {
     }
   });
 
-  ctrlElements.speedLockBanner.classList.remove('bg-emerald-600/40', 'border-emerald-400');
+  ctrlElements.speedLockBanner.className = 'p-2.5 rounded-xl bg-purple-950/60 border border-purple-400/30 mb-2.5 text-center transition';
   ctrlElements.speedStatusText.textContent = 'TAP YOUR ANSWER! ⏱️';
+});
+
+// Lifeline Handlers
+socket.on('player:lifeline_fifty_fifty', ({ eliminatedIndices }) => {
+  eliminatedIndices.forEach(idx => {
+    const card = document.querySelector(`.ctrl-option-card[data-choice="${idx}"]`);
+    if (card) {
+      card.disabled = true;
+      card.classList.add('dimmed', 'opacity-20');
+      card.style.transform = 'scale(0.92)';
+    }
+  });
+  if (playerProfile.lifelines) playerProfile.lifelines.fiftyFifty = 0;
+  if (ctrlElements.btnLifeline5050) {
+    ctrlElements.btnLifeline5050.disabled = true;
+    ctrlElements.btnLifeline5050.classList.add('opacity-40');
+    if (ctrlElements.badge5050Count) ctrlElements.badge5050Count.textContent = '0';
+  }
+  showToast('✂️ 50:50 Applied! 2 wrong options eliminated.');
+  window.sound.playPop();
+  triggerHaptic([30, 20]);
+});
+
+socket.on('player:lifeline_double_down', () => {
+  if (playerProfile.lifelines) playerProfile.lifelines.doubleDown = 0;
+  if (ctrlElements.btnLifelineDouble) {
+    ctrlElements.btnLifelineDouble.disabled = true;
+    ctrlElements.btnLifelineDouble.classList.add('opacity-40');
+    if (ctrlElements.badgeDoubleCount) ctrlElements.badgeDoubleCount.textContent = '0';
+  }
+  ctrlElements.speedLockBanner.classList.add('border-amber-400', 'bg-amber-950/60');
+  ctrlElements.speedStatusText.textContent = '⚡ DOUBLE DOWN ACTIVE! (2X POINTS)';
+  showToast('⚡ Double Down Activated! 2X Points if correct.');
+  window.sound.playLockIn();
+  triggerHaptic([40, 40]);
+});
+
+socket.on('player:toast', ({ message }) => {
+  showToast(message);
+});
+
+socket.on('game:sudden_death_alert', (data) => {
+  showToast(`⚡ SUDDEN DEATH TIE-BREAKER! ${data.tiedPlayers || ''}`, 5000);
+  window.sound.playTick(true);
+  triggerHaptic([80, 80, 80]);
 });
 
 // Speed Trivia Results (Detailed with correct answer & lore on phone!)
@@ -441,7 +576,7 @@ function setupControllerListeners() {
     });
   });
 
-  // Join Room
+  // Join Room (with auto-session token for reconnects)
   ctrlElements.btnJoinGame.addEventListener('click', () => {
     const code = ctrlElements.inputRoomCode.value.trim().toUpperCase();
     const name = ctrlElements.inputPlayerName.value.trim() || 'Contestant';
@@ -454,12 +589,29 @@ function setupControllerListeners() {
 
     ctrlElements.joinErrorMsg.classList.add('hidden');
     triggerHaptic([30]);
+    const savedToken = localStorage.getItem('trivia_player_token') || null;
     socket.emit('player:join_room', {
       roomCode: code,
       name,
-      avatar: playerProfile.avatar
+      avatar: playerProfile.avatar,
+      token: savedToken
     });
   });
+
+  // Lifelines: 50:50 and Double Down
+  if (ctrlElements.btnLifeline5050) {
+    ctrlElements.btnLifeline5050.addEventListener('click', () => {
+      triggerHaptic([30]);
+      socket.emit('player:use_lifeline', { roomCode: currentRoom, lifelineType: 'fiftyFifty' });
+    });
+  }
+
+  if (ctrlElements.btnLifelineDouble) {
+    ctrlElements.btnLifelineDouble.addEventListener('click', () => {
+      triggerHaptic([40]);
+      socket.emit('player:use_lifeline', { roomCode: currentRoom, lifelineType: 'doubleDown' });
+    });
+  }
 
   // Reaction Buttons (Cheer, Fire, Skull, etc.)
   ctrlElements.btnReactions.forEach(btn => {

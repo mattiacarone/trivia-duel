@@ -211,6 +211,174 @@ const GAME_PACKS = {
           funFact: "Prince William presented Prince Harry's inherited sapphire ring to Kate Middleton in 2010 in Kenya!"
         }
       ]
+    },
+    {
+      id: 'gaming_lore',
+      title: 'Video Game Legends & Lore',
+      category: 'Gaming, Speedruns & Easter Eggs',
+      price: '$3.49',
+      locked: true,
+      badge: 'GAMER CHOICE',
+      icon: '🎮',
+      description: 'Secret cheats, iconic boss encounters, glitches turned features, and gaming history.',
+      questions: [
+        {
+          question: "Which iconic cheat code entered popular culture via the NES game Contra in 1988?",
+          options: ["IDKFA", "The Konami Code (↑↑↓↓←→←→BA)", "Rosebud", "XYZZY"],
+          answer: 1,
+          funFact: "Kazuhisa Hashimoto invented the Konami Code while testing Gradius because he found the game too hard!"
+        },
+        {
+          question: "In Minecraft, what beloved hostile mob was created by accident when an engineer mixed up height and length?",
+          options: ["The Enderman", "The Creeper", "The Ghast", "The Blaze"],
+          answer: 1,
+          funFact: "Notch accidentally swapped the model dimensions while trying to code a pig, resulting in the iconic Creeper!"
+        },
+        {
+          question: "What is Mario's original profession before he officially became a plumber in Mario Bros (1983)?",
+          options: ["A carpenter", "A train conductor", "A pizza chef", "A clockmaker"],
+          answer: 0,
+          funFact: "In the 1981 arcade game Donkey Kong, Mario was called 'Jumpman' and was a carpenter on a construction site!"
+        },
+        {
+          question: "Which game holds the record for the first ever documented in-game 'Easter Egg'?",
+          options: ["Pac-Man", "Adventure (Atari 2600)", "Space Invaders", "Zork"],
+          answer: 1,
+          funFact: "Warren Robinett hid his name in a secret room in 1979 because Atari refused to credit game designers in the manual!"
+        },
+        {
+          question: "In World of Warcraft, what accidental 2005 virtual pandemic was later studied by epidemiologists?",
+          options: ["The Plague of Undeath", "The Corrupted Blood Incident", "The Fel Flu", "The Scourge Outbreak"],
+          answer: 1,
+          funFact: "A debuff from the boss Hakkar spread across major cities, killing millions of avatars and modeling real human epidemic behavior!"
+        }
+      ]
+    },
+    {
+      id: 'science_cosmos',
+      title: 'Cosmic Oddities & Weird Science',
+      category: 'Astronomy, Physics & Biology',
+      price: '$3.99',
+      locked: true,
+      badge: 'MIND BLOWING',
+      icon: '🌌',
+      description: 'Black holes, bizarre animal superpowers, quantum paradoxes, and deep space discoveries.',
+      questions: [
+        {
+          question: "What color does the sun appear to set on Mars as viewed from the Martian surface?",
+          options: ["Neon green", "Dusty blue", "Deep purple", "Crimson red"],
+          answer: 1,
+          funFact: "Martian fine dust particles scatter red light away, letting blue light pierce through directly near the sun!"
+        },
+        {
+          question: "How long does it take a single photon born at the center of the Sun to escape to the surface?",
+          options: ["8 minutes and 20 seconds", "Roughly 100,000 years", "Exactly 24 hours", "3.14 seconds"],
+          answer: 1,
+          funFact: "Photons undergo countless random collisions in the dense solar radiative zone before finally bursting free!"
+        },
+        {
+          question: "Which sea creature has three hearts, blue blood, and nine brains?",
+          options: ["The Colossal Squid", "The Octopus", "The Nautilus", "The Cuttlefish"],
+          answer: 1,
+          funFact: "Octopuses have a central brain and eight mini-brains in their arms, with copper-based hemocyanin making their blood blue!"
+        },
+        {
+          question: "If you folded a standard sheet of paper in half 42 times, how far would it reach?",
+          options: ["To the top of Mt Everest", "All the way to the Moon", "Across the Atlantic Ocean", "To the edge of the atmosphere"],
+          answer: 1,
+          funFact: "Due to exponential doubling ($0.1\\text{ mm} \\times 2^{42}$), the thickness exceeds 439,800 kilometers — past the Moon!"
+        },
+        {
+          question: "Which everyday element has a melting point so low it will literally melt in your hand?",
+          options: ["Gallium", "Bismuth", "Titanium", "Tungsten"],
+          answer: 0,
+          funFact: "Gallium melts at 29.76°C (85.57°F), just below normal human body temperature!"
+        }
+      ]
+    },
+    {
+      id: 'movie_buff',
+      title: 'Blockbusters & Cult Classics',
+      category: 'Cinema, Famous Quotes & Hollywood',
+      price: '$2.99',
+      locked: true,
+      badge: 'HOLLYWOOD',
+      icon: '🎬',
+      description: 'Oscar legends, behind-the-scenes drama, memorable lines, and unforgettable twists.',
+      questions: [
+        {
+          question: "What line does Darth Vader ACTUALLY say to Luke Skywalker in 'The Empire Strikes Back'?",
+          options: ["'Luke, I am your father.'", "'No, I am your father.'", "'It is true, I am your father.'", "'Search your feelings, I am your father.'"],
+          answer: 1,
+          funFact: "'Luke, I am your father' is one of the most widely misquoted lines in cinematic history — he actually says 'No, I am your father'!"
+        },
+        {
+          question: "Which actor improvised the famous line 'You're gonna need a bigger boat' in Jaws (1975)?",
+          options: ["Robert Shaw", "Roy Scheider", "Richard Dreyfuss", "Murray Hamilton"],
+          answer: 1,
+          funFact: "Roy Scheider kept ad-libbing the line as an inside joke because the production crew's support boat was way too small!"
+        },
+        {
+          question: "In Pulp Fiction (1994), what is glowing inside Marsellus Wallace's mysterious briefcase?",
+          options: ["The Holy Grail", "Wallace's stolen soul", "An unrevealed golden glow (orange bulb)", "A cache of diamonds"],
+          answer: 2,
+          funFact: "Quentin Tarantino confirmed it is whatever MacGuffin the audience wants it to be — on set, it was simply an orange lightbulb and a battery!"
+        },
+        {
+          question: "Which animated movie was the first ever animated feature to be nominated for Best Picture at the Oscars?",
+          options: ["The Lion King (1994)", "Beauty and the Beast (1991)", "Toy Story (1995)", "Spirited Away (2001)"],
+          answer: 1,
+          funFact: "Beauty and the Beast achieved this groundbreaking milestone in 1991 before the Best Animated Feature category existed!"
+        },
+        {
+          question: "In Jurassic Park (1993), what real creature sounds were mixed to create the iconic T-Rex roar?",
+          options: ["Lions, tigers, and bears", "An elephant pup, an alligator, and a tiger", "A revving jet engine and a hippo", "Whales and wolves"],
+          answer: 1,
+          funFact: "Sound designer Gary Rydstrom pitched down a baby elephant trumpeting, layered with an alligator hiss and tiger growls!"
+        }
+      ]
+    },
+    {
+      id: 'foodie_feuds',
+      title: 'Culinary Feuds & Midnight Bites',
+      category: 'Food History, Scandals & Recipes',
+      price: '$3.49',
+      locked: true,
+      badge: 'DELICIOUS',
+      icon: '🍕',
+      description: 'Street food battles, secret spice recipes, origin myths, and bizarre dining customs.',
+      questions: [
+        {
+          question: "In which country was the beloved 'Hawaiian Pizza' (ham & pineapple) actually invented?",
+          options: ["United States (Hawaii)", "Canada (Ontario)", "Australia", "Germany"],
+          answer: 1,
+          funFact: "Greek-Canadian chef Sam Panopoulos created it in 1962 at the Satellite Restaurant in Chatham, Ontario!"
+        },
+        {
+          question: "Why was Coca-Cola originally advertised with a green leaf and wine in the 1880s?",
+          options: ["It was inspired by French Coca Wine tonic", "It was sold as an organic tea", "It was marketed strictly for sailors", "It contained celery extract"],
+          answer: 0,
+          funFact: "John Pemberton invented it after reading about Angelo Mariani's viral French coca-infused Bordeaux wine!"
+        },
+        {
+          question: "What is the spicy compound responsible for the mouth-numbing sensation in Sichuan peppercorns?",
+          options: ["Capsaicin", "Hydroxy-alpha-sanshool", "Piperine", "Allyl isothiocyanate"],
+          answer: 1,
+          funFact: "Sanshool activates somatosensory tactile receptors, literally vibrating your lips at about 50 Hertz!"
+        },
+        {
+          question: "Which popular snack was originally rejected by US astronauts because crumbs could float into delicate instrument panels?",
+          options: ["Potato chips", "Bread and regular crackers", "M&Ms chocolate candies", "Peanut butter cups"],
+          answer: 1,
+          funFact: "Tortillas became the staple space carb in 1985 because they produce zero floating crumbs in zero-gravity!"
+        },
+        {
+          question: "What prized delicacy was once so abundant in colonial Massachusetts that servants complained about eating it too often?",
+          options: ["Caviar", "Lobster", "Truffles", "King Salmon"],
+          answer: 1,
+          funFact: "Lobsters were once considered the 'cockroach of the sea' and used as cheap prison food and crop fertilizer!"
+        }
+      ]
     }
   ],
 

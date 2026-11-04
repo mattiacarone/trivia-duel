@@ -22,12 +22,19 @@ const elements = {
   playerLimitLabel: document.getElementById('playerLimitLabel'),
   proBadge: document.getElementById('proBadge'),
   btnSoundToggle: document.getElementById('btnSoundToggle'),
+  btnBgmToggle: document.getElementById('btnBgmToggle'),
+  bgmLabel: document.getElementById('bgmLabel'),
+  btnFullscreen: document.getElementById('btnFullscreen'),
   btnOpenAiStudio: document.getElementById('btnOpenAiStudio'),
   btnOpenStore: document.getElementById('btnOpenStore'),
   btnToggleSim: document.getElementById('btnToggleSim'),
   simDock: document.getElementById('simDock'),
   simIframe: document.getElementById('simIframe'),
   btnCloseSim: document.getElementById('btnCloseSim'),
+
+  // Sudden death banner
+  suddenDeathBanner: document.getElementById('suddenDeathBanner'),
+  suddenDeathTitle: document.getElementById('suddenDeathTitle'),
 
   // Stage containers
   stageLobby: document.getElementById('stageLobby'),
@@ -119,6 +126,8 @@ const elements = {
   storePacksGrid: document.getElementById('storePacksGrid'),
   btnBuyProSub: document.getElementById('btnBuyProSub'),
   btnDownloadPrintables: document.getElementById('btnDownloadPrintables'),
+  inputLicenseKey: document.getElementById('inputLicenseKey'),
+  btnVerifyLicense: document.getElementById('btnVerifyLicense'),
 
   modalAiStudio: document.getElementById('modalAiStudio'),
   btnCloseAiStudio: document.getElementById('btnCloseAiStudio'),
@@ -194,6 +203,12 @@ socket.on('room:pro_updated', ({ isProHost: proStatus }) => {
 socket.on('round:speed_start', (data) => {
   switchStage('stageSpeedQuestion');
   window.sound.playWhoosh();
+
+  if (elements.suddenDeathBanner && !elements.suddenDeathBanner.classList.contains('hidden')) {
+    setTimeout(() => {
+      if (elements.suddenDeathBanner) elements.suddenDeathBanner.classList.add('hidden');
+    }, 4000);
+  }
 
   // Reset option card animations and states
   for (let i = 0; i < 4; i++) {
@@ -382,6 +397,18 @@ socket.on('majority:reveal_results', (data) => {
   window.sound.playFanfare();
 });
 
+// Socket Event: Sudden Death Tie-Breaker Alert
+socket.on('game:sudden_death_alert', (data) => {
+  if (elements.suddenDeathBanner) {
+    elements.suddenDeathBanner.classList.remove('hidden');
+    if (elements.suddenDeathTitle) {
+      elements.suddenDeathTitle.textContent = `⚡ TIE-BREAKER: ${data.tiedPlayers.join(' vs ')} (${data.tieScore} pts) ⚡`;
+    }
+  }
+  window.sound.playTick(true);
+  confetti({ particleCount: 50, spread: 70, origin: { y: 0.4 } });
+});
+
 // ================= GAME OVER / PODIUM =================
 socket.on('game:podium', (data) => {
   clearInterval(currentTimerInterval);
@@ -471,6 +498,32 @@ function setupEventListeners() {
     const isMuted = window.sound.toggleMute();
     elements.btnSoundToggle.textContent = isMuted ? '🔇' : '🔊';
   });
+
+  // Party BGM Groove Toggle
+  if (elements.btnBgmToggle) {
+    elements.btnBgmToggle.addEventListener('click', () => {
+      const isPlaying = window.sound.toggleBGM();
+      if (elements.bgmLabel) {
+        elements.bgmLabel.textContent = isPlaying ? 'BGM On 🎵' : 'BGM Off';
+      }
+      elements.btnBgmToggle.classList.toggle('bg-purple-600', isPlaying);
+    });
+  }
+
+  // Fullscreen TV Mode Toggle
+  if (elements.btnFullscreen) {
+    elements.btnFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        elements.btnFullscreen.textContent = '🗗';
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+        elements.btnFullscreen.textContent = '⛶';
+      }
+    });
+  }
 
   // Copy join link
   elements.btnCopyLink.addEventListener('click', () => {
@@ -570,10 +623,57 @@ function setupEventListeners() {
     window.sound.playCorrect();
   });
 
-  // Printable Etsy Flashcards preview
-  elements.btnDownloadPrintables.addEventListener('click', () => {
-    alert("🖨️ Generating printable high-res PDF Flashcards & Scorecards! In production, this delivers instant Etsy-style digital party downloads.");
-  });
+  // VIP License Key Redemption
+  if (elements.btnVerifyLicense) {
+    elements.btnVerifyLicense.addEventListener('click', async () => {
+      const key = (elements.inputLicenseKey?.value || '').trim();
+      if (!key) return;
+
+      elements.btnVerifyLicense.textContent = 'Checking...';
+      elements.btnVerifyLicense.disabled = true;
+
+      try {
+        const res = await fetch('/api/activate-license', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomCode, licenseKey: key })
+        });
+        const data = await res.json();
+        if (data.success) {
+          unlockedPacks = data.unlockedPacks;
+          isProHost = true;
+          elements.btnVerifyLicense.textContent = 'Unlocked! 🌟';
+          elements.btnVerifyLicense.classList.remove('btn-gold');
+          elements.btnVerifyLicense.classList.add('btn-green');
+          if (elements.inputLicenseKey) elements.inputLicenseKey.disabled = true;
+          renderStorePacks();
+          updatePackBanner();
+          triggerCelebrationConfetti();
+          window.sound.playFanfare();
+        } else {
+          elements.btnVerifyLicense.textContent = 'Invalid Key ❌';
+          setTimeout(() => {
+            elements.btnVerifyLicense.textContent = 'Verify 🔑';
+            elements.btnVerifyLicense.disabled = false;
+          }, 2000);
+        }
+      } catch (err) {
+        elements.btnVerifyLicense.textContent = 'Verify 🔑';
+        elements.btnVerifyLicense.disabled = false;
+      }
+    });
+  }
+
+  // Printable Etsy Flashcards instant print preview
+  if (elements.btnDownloadPrintables) {
+    elements.btnDownloadPrintables.addEventListener('click', () => {
+      if (roomCode) {
+        window.open(`/api/printable-kit/${roomCode}`, '_blank');
+      } else {
+        window.open('/api/printable-kit/DEMO', '_blank');
+      }
+    });
+  }
 }
 
 // Stage Switcher

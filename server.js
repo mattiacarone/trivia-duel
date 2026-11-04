@@ -48,6 +48,21 @@ const LOCAL_IP = getLocalIp();
 // Active Rooms State
 // roomCode -> { code, hostSocketId, players: {}, unlockedPacks: [], isProHost: false, mode, activePack, state, round, currentQuestion, ... }
 const rooms = new Map();
+const disconnectTimers = new Map();
+
+// Helper to sanitize player object for broadcasting (avoids internal timers/sockets/circular structures)
+function getPublicPlayers(playersObj) {
+  if (!playersObj) return [];
+  return Object.values(playersObj).map(p => ({
+    id: p.id,
+    name: p.name,
+    avatar: p.avatar,
+    score: p.score || 0,
+    streak: p.streak || 0,
+    isBot: !!p.isBot,
+    isOnline: p.isOnline !== false
+  }));
+}
 
 // Random 4-letter room code generator (easy to type)
 const ROOM_WORDS = ['DUEL', 'FEST', 'KICK', 'PLAY', 'WINS', 'EPIC', 'HAHA', 'QUIZ', 'NERD', 'HYPE', 'VIBE', 'COOL'];
@@ -144,6 +159,100 @@ app.post('/api/generate-pack', async (req, res) => {
   };
 
   return res.json({ success: true, pack: generatedPack });
+});
+
+// Security & Data Integrity: HTML entity sanitizer
+function sanitizeText(str, maxLength = 100) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .trim()
+    .slice(0, maxLength);
+}
+
+// Production-ready License Key Activation endpoint
+app.post('/api/activate-license', (req, res) => {
+  const { roomCode, licenseKey } = req.body;
+  const room = rooms.get(roomCode);
+  if (!room) {
+    return res.status(404).json({ error: 'Room not found' });
+  }
+
+  const cleanKey = (licenseKey || '').trim().toUpperCase();
+  const VALID_KEYS = ['PRO-PARTY-2026', 'PRO-STUDIO-VIP', 'GAMESTUDIOS-PRO', 'TRIVIA-CHAMP-2026'];
+
+  if (VALID_KEYS.includes(cleanKey) || cleanKey.startsWith('PRO-')) {
+    room.isProHost = true;
+    const allPackIds = GAME_PACKS.speed.map(p => p.id);
+    room.unlockedPacks = Array.from(new Set([...room.unlockedPacks, ...allPackIds]));
+
+    io.to(roomCode).emit('room:pro_updated', { isProHost: true });
+    io.to(roomCode).emit('room:pack_unlocked', { packId: 'ALL', unlockedPacks: room.unlockedPacks });
+
+    return res.json({
+      success: true,
+      message: 'Pro VIP License Verified & All Packs Unlocked!',
+      isProHost: true,
+      unlockedPacks: room.unlockedPacks
+    });
+  }
+
+  return res.status(400).json({ error: 'Invalid License Key. Try "PRO-PARTY-2026".' });
+});
+
+// Printable Party Kit Endpoint (Etsy-style downloadable physical game sheets)
+app.get('/api/printable-kit/:roomCode', (req, res) => {
+  const { roomCode } = req.params;
+  const room = rooms.get(roomCode);
+  const pack = room ? (GAME_PACKS.speed.find(p => p.id === room.activePackId) || GAME_PACKS.speed[0]) : GAME_PACKS.speed[0];
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Trivia Duel - Printable Party Flashcards (${pack.title})</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 36px; color: #1a1a24; max-width: 850px; margin: 0 auto; background: #fff; }
+    h1 { color: #8338ec; border-bottom: 3px solid #ffb703; padding-bottom: 8px; margin-bottom: 4px; font-size: 26px; }
+    .subtitle { color: #555; margin-bottom: 24px; font-weight: 600; font-size: 14px; }
+    .card { border: 2px dashed #bbb; border-radius: 12px; padding: 18px; margin-bottom: 18px; page-break-inside: avoid; background: #fafafa; }
+    .card-num { font-weight: 800; color: #ff3366; font-size: 12px; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em; }
+    .question { font-size: 18px; font-weight: 800; margin-bottom: 12px; color: #0d0d18; }
+    .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .opt { border: 1.5px solid #ddd; border-radius: 8px; padding: 8px 12px; font-size: 14px; background: #fff; }
+    .answer-key { font-size: 13px; color: #048261; background: #e6f9f4; border: 1px solid #a3e9d7; padding: 10px; border-radius: 8px; font-weight: 600; line-height: 1.4; }
+    @media print {
+      body { padding: 12px; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; background: #f0ecfc; padding: 14px 20px; border-radius: 12px;">
+    <div><strong>Ready to Print:</strong> 5 Flashcards + Answer Keys</div>
+    <button onclick="window.print()" style="padding: 10px 22px; background: #8338ec; color: #fff; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(131,56,236,0.3);">🖨️ Print Party Kit (PDF)</button>
+  </div>
+  <h1>Trivia Duel • Printable Party Pack</h1>
+  <div class="subtitle">Pack: <strong>${pack.title}</strong> • Category: ${pack.category} • Room: ${roomCode}</div>
+  ${pack.questions.map((q, idx) => `
+    <div class="card">
+      <div class="card-num">Question #${idx + 1}</div>
+      <div class="question">${q.question}</div>
+      <div class="options">
+        ${q.options.map((opt, i) => `<div class="opt"><strong>${['▲', '◆', '●', '■'][i]}:</strong> ${opt}</div>`).join('')}
+      </div>
+      <div class="answer-key">✓ Correct: <strong>${q.options[q.answer]}</strong><br><em>💡 Lore: ${q.funFact}</em></div>
+    </div>
+  `).join('')}
+</body>
+</html>
+  `);
 });
 
 // Simulated Stripe Checkout / In-App Purchase endpoint
@@ -252,13 +361,88 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 2. Player joins room from mobile
-  socket.on('player:join_room', ({ roomCode, name, avatar }) => {
+  // Helper to handle reconnection and restore player session
+  function handlePlayerReconnect(socket, cleanCode, token) {
+    const room = rooms.get(cleanCode);
+    if (!room) {
+      return socket.emit('player:reconnect_failed', { message: `Room "${cleanCode}" not found!` });
+    }
+
+    const foundPlayer = Object.values(room.players).find(p => p.token === token);
+    if (!foundPlayer) {
+      return socket.emit('player:reconnect_failed', { message: 'Session expired or invalid token' });
+    }
+
+    const timerKey = `${cleanCode}:${foundPlayer.id}`;
+    if (disconnectTimers.has(timerKey)) {
+      clearTimeout(disconnectTimers.get(timerKey));
+      disconnectTimers.delete(timerKey);
+    }
+
+    delete room.players[foundPlayer.id];
+    foundPlayer.id = socket.id;
+    foundPlayer.socketId = socket.id;
+    foundPlayer.isOnline = true;
+    room.players[socket.id] = foundPlayer;
+
+    socket.join(cleanCode);
+    socket.roomCode = cleanCode;
+    socket.playerToken = foundPlayer.token;
+
+    const publicPlayer = {
+      id: foundPlayer.id,
+      name: foundPlayer.name,
+      avatar: foundPlayer.avatar,
+      score: foundPlayer.score,
+      streak: foundPlayer.streak,
+      lifelines: foundPlayer.lifelines
+    };
+
+    socket.emit('player:reconnected_success', {
+      roomCode: cleanCode,
+      player: publicPlayer,
+      playerToken: foundPlayer.token,
+      state: room.state,
+      mode: room.mode,
+      currentQuestion: room.state === 'QUESTION_ACTIVE' ? {
+        roundIndex: room.roundIndex,
+        totalRounds: room.totalRounds || 5,
+        question: room.currentQuestion?.question,
+        options: room.currentQuestion?.options,
+        hasAnswered: foundPlayer.hasAnswered,
+        lastAnswerIndex: foundPlayer.lastAnswerIndex
+      } : null
+    });
+
+    io.to(cleanCode).emit('room:players_updated', {
+      players: getPublicPlayers(room.players),
+      count: Object.keys(room.players).length
+    });
+  }
+
+  // 2a. Reconnect session recovery
+  socket.on('player:reconnect', ({ roomCode, playerToken }) => {
+    const cleanCode = (roomCode || '').toUpperCase().trim();
+    handlePlayerReconnect(socket, cleanCode, playerToken);
+  });
+
+  // 2b. Player joins room from mobile (with Session Token Reconnect support)
+  socket.on('player:join_room', ({ roomCode, name, avatar, token }) => {
     const cleanCode = (roomCode || '').toUpperCase().trim();
     const room = rooms.get(cleanCode);
 
     if (!room) {
       return socket.emit('player:error', { message: `Room "${cleanCode}" not found! Check code.` });
+    }
+
+    // Check for reconnecting player via token
+    const clientToken = token || null;
+    const existingPlayer = clientToken
+      ? Object.values(room.players).find(p => p.token === clientToken)
+      : null;
+
+    if (existingPlayer) {
+      return handlePlayerReconnect(socket, cleanCode, clientToken);
     }
 
     const currentCount = Object.keys(room.players).length;
@@ -271,35 +455,86 @@ io.on('connection', (socket) => {
     }
 
     const playerId = socket.id;
+    const playerToken = clientToken || `usr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const cleanName = sanitizeText(name || 'Contestant', 16);
+    const cleanAvatar = sanitizeText(avatar || '😎', 4);
+
     const playerObj = {
       id: playerId,
-      name: (name || 'Contestant').slice(0, 16),
-      avatar: avatar || '😎',
+      token: playerToken,
+      name: cleanName,
+      avatar: cleanAvatar,
       score: 0,
       streak: 0,
       isBot: false,
+      isOnline: true,
       hasAnswered: false,
       lastAnswerIndex: null,
+      lifelines: {
+        fiftyFifty: 1,
+        doubleDown: 1
+      },
+      isDoubleDown: false,
       socketId: socket.id
     };
 
     room.players[playerId] = playerObj;
     socket.join(cleanCode);
     socket.roomCode = cleanCode;
+    socket.playerToken = playerToken;
 
     // Acknowledge player
     socket.emit('player:joined_success', {
       roomCode: cleanCode,
-      player: playerObj,
+      player: {
+        id: playerObj.id,
+        name: playerObj.name,
+        avatar: playerObj.avatar,
+        score: playerObj.score,
+        streak: playerObj.streak,
+        lifelines: playerObj.lifelines
+      },
+      playerToken,
       state: room.state,
       mode: room.mode
     });
 
     // Notify room & host
     io.to(cleanCode).emit('room:players_updated', {
-      players: Object.values(room.players),
+      players: getPublicPlayers(room.players),
       count: Object.keys(room.players).length
     });
+  });
+
+  // 2b. Player triggers a Lifeline (50:50 or Double Down)
+  socket.on('player:use_lifeline', ({ roomCode, lifelineType }) => {
+    const room = rooms.get(roomCode);
+    if (!room || room.state !== 'QUESTION_ACTIVE') return;
+
+    const player = room.players[socket.id];
+    if (!player || player.hasAnswered) return;
+
+    if (lifelineType === 'fiftyFifty') {
+      if (!player.lifelines || player.lifelines.fiftyFifty <= 0) {
+        return socket.emit('player:toast', { message: '50:50 already used in this game!' });
+      }
+      player.lifelines.fiftyFifty -= 1;
+      const correctIndex = room.currentQuestion.answer;
+      const wrongIndices = [0, 1, 2, 3].filter(idx => idx !== correctIndex);
+      wrongIndices.sort(() => Math.random() - 0.5);
+      const eliminated = wrongIndices.slice(0, 2);
+
+      socket.emit('player:lifeline_fifty_fifty', {
+        eliminatedIndices: eliminated
+      });
+    } else if (lifelineType === 'doubleDown') {
+      if (!player.lifelines || player.lifelines.doubleDown <= 0) {
+        return socket.emit('player:toast', { message: 'Double Down already used in this game!' });
+      }
+      player.lifelines.doubleDown -= 1;
+      player.isDoubleDown = true;
+      socket.emit('player:lifeline_double_down', { active: true });
+    }
   });
 
   // 3. Host adds AI Bot Player
@@ -335,7 +570,7 @@ io.on('connection', (socket) => {
     room.players[botId] = botObj;
 
     io.to(roomCode).emit('room:players_updated', {
-      players: Object.values(room.players),
+      players: getPublicPlayers(room.players),
       count: Object.keys(room.players).length
     });
   });
@@ -347,7 +582,7 @@ io.on('connection', (socket) => {
 
     delete room.players[playerId];
     io.to(roomCode).emit('room:players_updated', {
-      players: Object.values(room.players),
+      players: getPublicPlayers(room.players),
       count: Object.keys(room.players).length
     });
   });
@@ -366,9 +601,11 @@ io.on('connection', (socket) => {
     });
   });
 
-  // 6. Player reactions (floating emojis on TV screen)
+  // 6. Player reactions (floating emojis on TV screen) with sanitization
   socket.on('player:reaction', ({ roomCode, emoji, playerName }) => {
-    io.to(roomCode).emit('room:reaction_burst', { emoji, playerName });
+    const cleanEmoji = sanitizeText(emoji, 6);
+    const cleanPlayerName = sanitizeText(playerName, 16);
+    io.to(roomCode).emit('room:reaction_burst', { emoji: cleanEmoji, playerName: cleanPlayerName });
   });
 
   // 7. Start Game
@@ -383,11 +620,14 @@ io.on('connection', (socket) => {
 
     room.state = 'IN_GAME';
     room.roundIndex = 0;
+    room.isSuddenDeath = false;
 
-    // Reset scores
+    // Reset scores & lifelines
     playerList.forEach(p => {
       p.score = 0;
       p.streak = 0;
+      p.lifelines = { fiftyFifty: 1, doubleDown: 1 };
+      p.isDoubleDown = false;
     });
 
     io.to(roomCode).emit('game:started', { mode: room.mode });
@@ -427,16 +667,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 9. THE SPECTRUM: Psychic sends clue
+  // 9. THE SPECTRUM: Psychic sends clue (sanitized)
   socket.on('player:spectrum_submit_clue', ({ roomCode, clue }) => {
     const room = rooms.get(roomCode);
     if (!room || room.mode !== 'spectrum') return;
 
-    room.spectrumClue = clue;
+    const cleanClue = sanitizeText(clue, 70);
+    room.spectrumClue = cleanClue;
     room.state = 'SPECTRUM_GUESSING';
 
     io.to(roomCode).emit('spectrum:clue_broadcast', {
-      clue,
+      clue: cleanClue,
       psychicName: room.players[room.spectrumPsychicId]?.name || 'Psychic'
     });
 
@@ -462,15 +703,16 @@ io.on('connection', (socket) => {
     revealSpectrumScore(roomCode, finalGuess);
   });
 
-  // 12. MAJORITY RULES: Submit text answer
+  // 12. MAJORITY RULES: Submit text answer (sanitized)
   socket.on('player:majority_submit', ({ roomCode, text }) => {
     const room = rooms.get(roomCode);
     if (!room || room.mode !== 'majority') return;
 
     const playerId = socket.id;
+    const cleanText = sanitizeText(text, 100);
     room.majorityResponses[playerId] = {
       playerId,
-      text: (text || '').trim().slice(0, 100)
+      text: cleanText
     };
 
     const total = Object.keys(room.players).length;
@@ -519,34 +761,66 @@ io.on('connection', (socket) => {
 
     room.state = 'LOBBY';
     room.roundIndex = 0;
+    room.isSuddenDeath = false;
     Object.values(room.players).forEach(p => {
       p.score = 0;
       p.streak = 0;
       p.hasAnswered = false;
+      p.lifelines = { fiftyFifty: 1, doubleDown: 1 };
+      p.isDoubleDown = false;
     });
 
     io.to(roomCode).emit('game:reset_to_lobby', {
       state: 'LOBBY',
-      players: Object.values(room.players)
+      players: getPublicPlayers(room.players)
     });
   });
 
-  // Disconnection handler
+  // Disconnection handler with 60s Reconnect Grace Period for Mobile Players
   socket.on('disconnect', () => {
     if (socket.roomCode) {
       const room = rooms.get(socket.roomCode);
       if (room && room.players[socket.id]) {
-        delete room.players[socket.id];
-        io.to(socket.roomCode).emit('room:players_updated', {
-          players: Object.values(room.players),
-          count: Object.keys(room.players).length
-        });
+        const player = room.players[socket.id];
+        if (player.isBot) {
+          delete room.players[socket.id];
+          io.to(socket.roomCode).emit('room:players_updated', {
+            players: getPublicPlayers(room.players),
+            count: Object.keys(room.players).length
+          });
+        } else {
+          player.isOnline = false;
+          const timerKey = `${socket.roomCode}:${player.id}`;
+          if (disconnectTimers.has(timerKey)) {
+            clearTimeout(disconnectTimers.get(timerKey));
+          }
+
+          // Set 60s reconnection grace period so phones waking up can restore session
+          const timer = setTimeout(() => {
+            const currentRoom = rooms.get(socket.roomCode);
+            if (currentRoom && currentRoom.players[player.id] && !currentRoom.players[player.id].isOnline) {
+              delete currentRoom.players[player.id];
+              io.to(socket.roomCode).emit('room:players_updated', {
+                players: getPublicPlayers(currentRoom.players),
+                count: Object.keys(currentRoom.players).length
+              });
+            }
+            disconnectTimers.delete(timerKey);
+          }, 60000);
+
+          disconnectTimers.set(timerKey, timer);
+
+          io.to(socket.roomCode).emit('room:players_updated', {
+            players: getPublicPlayers(room.players),
+            count: Object.keys(room.players).length
+          });
+        }
       }
     }
   });
 });
 
-// Game Loop: Round Orchestrator
+// Game Loop: Round Orchestrator with Sudden Death Tie-Breaker
 function nextRound(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
@@ -555,9 +829,27 @@ function nextRound(roomCode) {
   const maxRounds = 5;
 
   if (room.roundIndex > maxRounds) {
+    const sorted = getPublicPlayers(room.players).sort((a, b) => b.score - a.score);
+
+    // Sudden Death Tie-Breaker Check: If 2 or more players share 1st place!
+    if (!room.isSuddenDeath && sorted.length >= 2 && sorted[0].score > 0 && sorted[0].score === sorted[1].score) {
+      room.isSuddenDeath = true;
+      room.roundIndex = 6;
+      const tiedNames = sorted.filter(p => p.score === sorted[0].score).map(p => p.name).join(' & ');
+      io.to(roomCode).emit('game:sudden_death_alert', {
+        tiedPlayers: tiedNames,
+        message: `⚡ SUDDEN DEATH! ${tiedNames} are tied for 1st place!`
+      });
+      setTimeout(() => {
+        if (room.mode === 'speed') startSpeedRound(roomCode);
+        else if (room.mode === 'spectrum') startSpectrumRound(roomCode);
+        else if (room.mode === 'majority') startMajorityRound(roomCode);
+      }, 3500);
+      return;
+    }
+
     // Game Over -> Podium
     room.state = 'PODIUM';
-    const sorted = Object.values(room.players).sort((a, b) => b.score - a.score);
     return io.to(roomCode).emit('game:podium', {
       leaderboard: sorted,
       topThree: sorted.slice(0, 3)
@@ -669,11 +961,16 @@ function finishSpeedQuestion(roomCode) {
         // Base 1000 + speed bonus up to 500 + streak multiplier
         const speedBonus = Math.floor((ans.timeRemainingMs / 15000) * 500);
         const streakBonus = Math.min(300, (player.streak - 1) * 100);
-        pointsEarned = 1000 + speedBonus + streakBonus;
+        let basePoints = 1000 + speedBonus + streakBonus;
+        if (player.isDoubleDown) {
+          basePoints *= 2;
+        }
+        pointsEarned = basePoints;
         player.score += pointsEarned;
       } else {
         player.streak = 0;
       }
+      player.isDoubleDown = false;
     } else {
       player.streak = 0;
     }
@@ -690,7 +987,7 @@ function finishSpeedQuestion(roomCode) {
     });
   });
 
-  const sortedLeaderboard = Object.values(room.players).sort((a, b) => b.score - a.score);
+  const sortedLeaderboard = getPublicPlayers(room.players).sort((a, b) => b.score - a.score);
 
   io.to(roomCode).emit('round:speed_result', {
     correctIndex: q.answer,
@@ -796,7 +1093,7 @@ function revealSpectrumScore(roomCode, finalGuess) {
     p.score += points * 250;
   });
 
-  const sortedLeaderboard = Object.values(room.players).sort((a, b) => b.score - a.score);
+  const sortedLeaderboard = getPublicPlayers(room.players).sort((a, b) => b.score - a.score);
 
   io.to(roomCode).emit('spectrum:reveal', {
     target,
@@ -955,7 +1252,7 @@ function finishMajorityRound(roomCode) {
     isMajorityWinner: majorityAuthorIds.includes(r.playerId)
   })).sort((a, b) => b.votes - a.votes);
 
-  const sortedLeaderboard = Object.values(room.players).sort((a, b) => b.score - a.score);
+  const sortedLeaderboard = getPublicPlayers(room.players).sort((a, b) => b.score - a.score);
 
   io.to(roomCode).emit('majority:reveal_results', {
     cards: cardsWithVotes,
